@@ -289,6 +289,49 @@
     @apply !bg-indigo-50/50 !text-indigo-700 !border-indigo-200/50 px-2 py-0.5 rounded cursor-help font-medium transition-all hover:bg-indigo-100/50;
 }
 
+/* Academic Caption Styling */
+.academic-caption {
+    @apply my-4 py-2 font-serif text-[14px] leading-relaxed;
+}
+
+.academic-caption .caption-label {
+    @apply font-bold mr-1;
+}
+
+.academic-caption .caption-content {
+    @apply italic font-medium;
+}
+
+/* APA Specifics */
+.style-apa .academic-caption.type-figure {
+    @apply text-left mt-2;
+}
+
+.style-apa .academic-caption.type-table {
+    @apply text-left mb-2;
+}
+
+/* IEEE Specifics */
+.style-ieee .academic-caption {
+    @apply font-sans text-[12px];
+}
+
+.style-ieee .academic-caption.type-figure {
+    @apply text-center mt-2 mx-auto max-w-[80%];
+}
+
+.style-ieee .academic-caption.type-table {
+    @apply text-center mb-2 mx-auto uppercase tracking-wider;
+}
+
+.style-ieee .academic-caption.type-table .caption-label {
+    @apply font-black text-slate-900;
+}
+
+.style-ieee .academic-caption.type-table .caption-content {
+    @apply not-italic font-bold text-slate-800;
+}
+
 /* Collaboration Cursor Styling */
 .collaboration-cursor__caret {
   border-left: 1px solid #0d0d0d;

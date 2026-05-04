@@ -2,13 +2,15 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, 
   AlignmentType, PageBreak, BookmarkStart, BookmarkEnd,
   Table, TableRow, TableCell, WidthType, BorderStyle,
-  SimpleField, TableOfContents
+  SimpleField, TableOfContents, FootnoteReferenceRun
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { Source } from '../types';
 import { STYLE_PROFILES, StyleProfile } from '../constants/styleProfiles';
 
 let bookmarkIdCounter = 0;
+let externalFootnotes: Record<number, { children: Paragraph[] }> = {};
+let footnoteIdCounter = 1;
 
 /**
  * Creates an academic figure caption with automatic SEQ numbering and bookmarking
@@ -187,11 +189,24 @@ function processContentNode(node: any, profile: StyleProfile) {
           new TextRun({ text: ')', color: '4F46E5', bold: true, size: profile.fontSize }),
         ];
       }
+      if (inlineNode.type === 'footnote') {
+        const id = footnoteIdCounter++;
+        externalFootnotes[id] = {
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: inlineNode.attrs?.content || '', size: profile.fontSize - 2, font: profile.font })
+              ]
+            })
+          ]
+        };
+        return new FootnoteReferenceRun(id);
+      }
       return null;
     }).flat().filter(Boolean);
 
     return new Paragraph({
-      children: inlineChildren as (TextRun | SimpleField)[],
+      children: inlineChildren as (TextRun | SimpleField | FootnoteReferenceRun)[],
       spacing: { line: profile.lineSpacing, after: 200 },
       alignment: AlignmentType.JUSTIFIED,
       indent: { firstLine: profile.paragraphIndent },
@@ -206,6 +221,8 @@ export async function exportToDocx(content: any, sources: Source[] = [], title: 
 
   const profile = STYLE_PROFILES[profileId] || STYLE_PROFILES.apa;
   bookmarkIdCounter = 0;
+  footnoteIdCounter = 1;
+  externalFootnotes = {};
   const children: any[] = [];
 
   // 1. Title Page
@@ -253,7 +270,7 @@ export async function exportToDocx(content: any, sources: Source[] = [], title: 
     spacing: { before: 400, after: 400 },
   }));
   children.push(new Paragraph({
-    children: [new SimpleField('TOC \\c "Figure"')]
+    children: [new SimpleField('TOC \\h \\z \\c "Figure"')]
   }));
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -266,7 +283,7 @@ export async function exportToDocx(content: any, sources: Source[] = [], title: 
     spacing: { before: 400, after: 400 },
   }));
   children.push(new Paragraph({
-    children: [new SimpleField('TOC \\c "Table"')]
+    children: [new SimpleField('TOC \\h \\z \\c "Table"')]
   }));
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -310,6 +327,7 @@ export async function exportToDocx(content: any, sources: Source[] = [], title: 
     creator: 'Research Studio AI',
     title: title,
     description: `Generated Thesis Manuscript (${profile.name})`,
+    footnotes: externalFootnotes,
     numbering: {
       config: [
         {

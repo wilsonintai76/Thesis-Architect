@@ -13,11 +13,19 @@ export function Outline({ content, onNavigate }: OutlineProps) {
     
     return node.content
       .filter((n: any) => n.type === 'heading')
-      .map((n: any) => ({
-        level: n.attrs.level,
-        text: n.content?.[0]?.text || 'Untitled Section',
-        id: n.attrs.id || Math.random().toString(36).substring(7)
-      }));
+      .map((n: any) => {
+        // Recursively get text content
+        const getText = (node: any): string => {
+          if (!node.content) return node.text || '';
+          return node.content.map(getText).join('');
+        };
+        
+        return {
+          level: n.attrs.level,
+          text: getText(n) || 'Untitled Section',
+          id: n.attrs.id
+        };
+      });
   };
 
   const headings = extractHeadings(content);
@@ -40,8 +48,11 @@ export function Outline({ content, onNavigate }: OutlineProps) {
             headings.map((heading, i) => (
               <button
                 key={i}
-                onClick={() => onNavigate(heading.id)}
-                className={`w-full text-left flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-200/50 transition-colors group ${
+                onClick={() => heading.id && onNavigate(heading.id)}
+                disabled={!heading.id}
+                className={`w-full text-left flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors group ${
+                  heading.id ? 'hover:bg-slate-200/50 cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                } ${
                   heading.level === 1 ? 'mt-3 mb-1' : ''
                 }`}
               >

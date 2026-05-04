@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 
 export interface FootnoteOptions {
   HTMLAttributes: Record<string, any>;
@@ -10,7 +11,7 @@ declare module '@tiptap/core' {
       /**
        * Set a footnote node
        */
-      setFootnote: (attributes: { id: string; content: string; number: number }) => ReturnType;
+      setFootnote: (attributes: { id: string; content: string; number?: number }) => ReturnType;
     };
   }
 }
@@ -66,19 +67,44 @@ export const Footnote = Node.create<FootnoteOptions>({
     return {
       setFootnote:
         (attributes) =>
-        ({ commands, state }) => {
-          let numberStr = 1;
-          state.doc.descendants((node) => {
-            if (node.type.name === 'footnote') {
-              numberStr++;
-            }
-          });
-          
+        ({ commands }) => {
           return commands.insertContent({
             type: this.name,
-            attrs: { ...attributes, number: attributes.number || numberStr },
+            attrs: attributes,
           });
         },
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('footnote-numbering'),
+        appendTransaction: (transactions, oldState, newState) => {
+          if (!transactions.some(tr => tr.docChanged)) {
+            return null;
+          }
+
+          const tr = newState.tr;
+          let modified = false;
+          let count = 0;
+
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name === 'footnote') {
+              count++;
+              if (node.attrs.number !== count) {
+                tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  number: count,
+                });
+                modified = true;
+              }
+            }
+          });
+
+          return modified ? tr : null;
+        },
+      }),
+    ];
   },
 });

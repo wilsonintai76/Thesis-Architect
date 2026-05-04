@@ -13,11 +13,21 @@ export interface Source {
   addedAt: number;
 }
 
+export interface ResearchArtifact {
+  id: string;
+  query: string;
+  content: string;
+  type: 'title' | 'outline' | 'questions' | 'synthesis';
+  timestamp: number;
+  linkedSourceIds?: string[];
+}
+
 export interface Paper {
   id: string;
   title: string;
   content: any; // TipTap JSON
   sources: Source[];
+  researchArtifacts?: ResearchArtifact[];
   updatedAt: number;
 }
 

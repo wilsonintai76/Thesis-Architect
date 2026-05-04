@@ -86,4 +86,10 @@ export const Mathematics = Node.create<MathematicsOptions>({
       },
     }
   },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Alt-e': () => this.editor.commands.setMathematics({ latex: 'x = ' }),
+    }
+  },
 })

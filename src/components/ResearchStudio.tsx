@@ -1,37 +1,29 @@
 import * as React from 'react';
 import { 
-  Compass, Sparkles, Send, Copy, Plus, 
-  Lightbulb, BookOpen, Quote, Target, X, 
-  RefreshCw, CheckCircle2, ChevronRight, Wand2, Link as LinkIcon
+  Compass, Sparkles, Plus, 
+  Lightbulb, BookOpen, Target, X, 
+  RefreshCw, ChevronRight, Link as LinkIcon,
+  HelpCircle, CheckCircle2
 } from 'lucide-react';
+import { ResearchArtifact, Source } from '../types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { ResearchTemplateSection } from './research/ResearchTemplateSection';
+import { ResearchArtifactCard } from './research/ResearchArtifactCard';
 
 interface ResearchStudioProps {
   paperContent: string;
-  sources: any[];
+  sources: Source[];
+  artifacts: ResearchArtifact[];
+  onUpdateArtifacts: (artifacts: ResearchArtifact[]) => void;
   onInsertText: (text: string) => void;
   onClose: () => void;
-}
-
-interface ResearchResult {
-  id: string;
-  query: string;
-  content: string;
-  type: 'title' | 'outline' | 'questions' | 'synthesis';
-  timestamp: number;
 }
 
 interface WebSource {
@@ -42,16 +34,16 @@ interface WebSource {
   timestamp: string;
 }
 
-export function ResearchStudio({ paperContent, sources, onInsertText, onClose }: ResearchStudioProps) {
+export function ResearchStudio({ paperContent, sources, artifacts, onUpdateArtifacts, onInsertText, onClose }: ResearchStudioProps) {
   const [prompt, setPrompt] = React.useState('');
   const [url, setUrl] = React.useState('');
   const [keywords, setKeywords] = React.useState('');
-  const [results, setResults] = React.useState<ResearchResult[]>([]);
   const [webSources, setWebSources] = React.useState<WebSource[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isExtracting, setIsExtracting] = React.useState(false);
-  const [activeMode, setActiveMode] = React.useState<'custom' | 'templates' | 'web'>('templates');
+  const [activeMode, setActiveMode] = React.useState<'custom' | 'templates' | 'web' | 'questions'>('templates');
   const [refiningId, setRefiningId] = React.useState<string | null>(null);
+  const [autoLinkingId, setAutoLinkingId] = React.useState<string | null>(null);
   const [customRefiningPrompt, setCustomRefiningPrompt] = React.useState('');
 
   const runResearch = async (customPrompt?: string, mode: 'internal' | 'web' = 'internal') => {
@@ -63,24 +55,45 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
 
     try {
       if (mode === 'web') {
-        const response = await fetch('/api/research', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: query, focus: keywords })
-        });
-        const data = await response.json();
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
         
-        const newResult: ResearchResult = {
+        const webPrompt = `You are a professional research assistant. 
+        Perform a deep search on the following topic: "${query}".
+        Focus specifically on: ${keywords || 'academic relevance and current data'}.
+        
+        Provide a structured report with:
+        1. Executive Summary
+        2. Key Findings (supported by search data)
+        3. Relevant Statistics/Data Points
+        4. Proposed Academic Citations
+        
+        Maintain a highly scholarly and objective tone.`;
+
+        const result = await ai.models.generateContent({ 
+          model: "gemini-3-flash-preview",
+          contents: webPrompt,
+          config: {
+            tools: [
+              {
+                googleSearch: {}
+              }
+            ]
+          }
+        });
+        
+        const responseText = result.text || 'Web research engine returned no data.';
+        
+        const newResult: ResearchArtifact = {
           id: Math.random().toString(36).substring(2, 9),
           query: query.substring(0, 30) + (query.length > 30 ? '...' : ''),
-          content: data.content,
+          content: responseText,
           type: 'synthesis',
           timestamp: Date.now()
         };
-        setResults(prev => [newResult, ...prev]);
+        onUpdateArtifacts([newResult, ...artifacts]);
         toast.success('Web research completed');
       } else {
-        const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
         
         const systemPrompt = `
           You are a World-Class Academic Editor and Research Consultant specializing in high-impact publishing (Nature, Science, JSTOR).
@@ -88,7 +101,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
           CONTEXT:
           Manuscript Snippet: ${paperContent.slice(0, 3000)}
           Focus Keywords: ${keywords || 'Context-driven'}
-          Available References: ${JSON.stringify(sources.map(s => ({ title: s.title, year: s.year })))}
+          Available References: ${JSON.stringify(sources.map(s => ({ id: s.id, title: s.title, authors: s.authors, year: s.year })))}
           
           CORE TASK:
           ${query}
@@ -105,28 +118,30 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
           Use clean Markdown with bold headings. For titles, use a numbered list.
         `;
 
-        const result = await genAI.models.generateContent({
-          model: 'gemini-1.5-flash',
+        const result = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
           contents: systemPrompt,
         });
 
         const responseText = result.text || 'Synthesis engine offline.';
         
         const isTitleQuery = query.toLowerCase().includes('title');
+        const isQuestionQuery = query.toLowerCase().includes('question');
         
-        const newResult: ResearchResult = {
+        const newResult: ResearchArtifact = {
           id: Math.random().toString(36).substring(2, 9),
-          query: isTitleQuery ? 'Academic Title Laboratory' : (query.length > 30 ? query.substring(0, 30) + '...' : query),
+          query: isTitleQuery ? 'Academic Title Laboratory' : (isQuestionQuery ? 'Research Question Blueprint' : (query.length > 30 ? query.substring(0, 30) + '...' : query)),
           content: responseText,
-          type: isTitleQuery ? 'title' : 'synthesis',
+          type: isTitleQuery ? 'title' : (isQuestionQuery ? 'questions' : 'synthesis'),
           timestamp: Date.now()
         };
 
-        setResults(prev => [newResult, ...prev]);
+        onUpdateArtifacts([newResult, ...artifacts]);
         toast.success('Research synthesis complete');
       }
-    } catch (error) {
-      toast.error('Research service error');
+    } catch (error: any) {
+      console.error('Research error:', error);
+      toast.error(`Research service error: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -146,23 +161,114 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
       });
       const data = await response.json();
       
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch content');
+
+      // Now use Gemini on the frontend to analyze the raw content
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+      
+      const extractPrompt = `Analyze the following webpage content from ${url}.
+      
+      1. Summarize the main scholarly/informative contribution (3-5 sentences).
+      2. Extract 3 key data points or arguments.
+      3. Provide a full academic citation in APA format.
+      4. Suggest 3 relevant keywords.
+      
+      CONTENT:
+      ${data.content}`;
+
+      const result = await ai.models.generateContent({ 
+        model: "gemini-3-flash-preview",
+        contents: extractPrompt
+      });
+      const analysis = result.text || 'Analysis failed.';
+
       const newSource: WebSource = {
         id: Math.random().toString(36).substring(2, 9),
-        ...data
+        url: data.url,
+        title: data.title,
+        analysis: analysis,
+        timestamp: data.timestamp
       };
       
       setWebSources(prev => [newSource, ...prev]);
       setUrl('');
-      toast.success('Source extracted successfully', { id: toastId });
-    } catch (error) {
-      toast.error('Extraction failed', { id: toastId });
+      toast.success('Source extracted and analyzed', { id: toastId });
+    } catch (error: any) {
+      console.error('Extraction error:', error);
+      toast.error(`Extraction failed: ${error.message || 'Unknown error'}`, { id: toastId });
     } finally {
       setIsExtracting(false);
     }
   };
 
+  const toggleSourceLink = (artifactId: string, sourceId: string) => {
+    onUpdateArtifacts(artifacts.map(res => {
+      if (res.id !== artifactId) return res;
+      const currentLinks = res.linkedSourceIds || [];
+      const newLinks = currentLinks.includes(sourceId)
+        ? currentLinks.filter(id => id !== sourceId)
+        : [...currentLinks, sourceId];
+      return { ...res, linkedSourceIds: newLinks };
+    }));
+  };
+
+  const autoLinkArtifact = async (artifactId: string) => {
+    if (autoLinkingId || sources.length === 0) return;
+    
+    const artifact = artifacts.find(a => a.id === artifactId);
+    if (!artifact) return;
+
+    setAutoLinkingId(artifactId);
+    const toastId = toast.loading('AI analyzing source metadata for links...');
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+      
+      const linkagePrompt = `
+        You are a Research Data Integrity Expert. Identify which of the following sources are most relevant to this research artifact.
+        
+        ARTIFACT CONTENT:
+        ${artifact.content}
+        
+        LIBRARY SOURCES:
+        ${JSON.stringify(sources.map(s => ({ id: s.id, title: s.title, authors: s.authors, year: s.year })))}
+        
+        TASK:
+        Provide a JSON list of source IDs that are directly relevant or likely influenced this content. Return ONLY the JSON array of strings.
+      `;
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: linkagePrompt,
+      });
+
+      const responseText = result.text || '[]';
+      // Basic JSON extraction
+      const match = responseText.match(/\[.*\]/s);
+      if (match) {
+        const suggestedIds: string[] = JSON.parse(match[0]);
+        // Filter to valid IDs only
+        const validIds = suggestedIds.filter(id => sources.some(s => s.id === id));
+        
+        if (validIds.length > 0) {
+          onUpdateArtifacts(artifacts.map(a => 
+            a.id === artifactId ? { ...a, linkedSourceIds: Array.from(new Set([...(a.linkedSourceIds || []), ...validIds])) } : a
+          ));
+          toast.success(`Automatically linked ${validIds.length} relevant sources`, { id: toastId });
+        } else {
+          toast.info('No strong thematic links found in library', { id: toastId });
+        }
+      }
+    } catch (error: any) {
+      console.error('Auto-linking error:', error);
+      toast.error(`Auto-linking failed: ${error.message || 'Unknown error'}`, { id: toastId });
+    } finally {
+      setAutoLinkingId(null);
+    }
+  };
+
   const refineResult = async (id: string, instruction: 'rephrase' | 'expand' | 'custom') => {
-    const resultToRefine = results.find(r => r.id === id);
+    const resultToRefine = artifacts.find(r => r.id === id);
     if (!resultToRefine || refiningId) return;
 
     const finalInstruction = instruction === 'custom' ? customRefiningPrompt : instruction;
@@ -175,7 +281,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
     const toastId = toast.loading(`${instruction === 'custom' ? 'Refining' : instruction === 'rephrase' ? 'Rephrasing' : 'Expanding'} artifact...`);
 
     try {
-      const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
       
       let specificInstruction = '';
       if (instruction === 'rephrase') {
@@ -199,52 +305,26 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
         Maintain the same structured academic markdown format.
       `;
 
-      const result = await genAI.models.generateContent({
-        model: 'gemini-1.5-flash',
+      const result = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
         contents: refinementPrompt,
       });
 
       const refinedText = result.text || resultToRefine.content;
 
-      setResults(prev => prev.map(r => 
+      onUpdateArtifacts(artifacts.map(r => 
         r.id === id ? { ...r, content: refinedText, timestamp: Date.now() } : r
       ));
       
       setCustomRefiningPrompt('');
       toast.success(`Artifact refined successfully`, { id: toastId });
-    } catch (error) {
-      toast.error('Refinement failed', { id: toastId });
+    } catch (error: any) {
+      console.error('Refinement error:', error);
+      toast.error(`Refinement failed: ${error.message || 'Unknown error'}`, { id: toastId });
     } finally {
       setRefiningId(null);
     }
   };
-
-  const templates = [
-    {
-      title: 'Academic Title Lab',
-      description: 'Generate 5 sophisticated research titles based on my manuscript.',
-      prompt: 'Generate 5 high-impact academic titles. Provide 1 descriptive, 1 question-based, 1 methodology-focused, 1 colon-separated, and 1 punchy modernist title.',
-      icon: <Target className="w-4 h-4" />
-    },
-    {
-      title: 'Gap Identification',
-      description: 'Identify 3 potential research gaps or unanswered questions.',
-      prompt: 'Identify 3 potential research gaps or unanswered questions in the current manuscript, drawing connections to the available sources and keywords provided.',
-      icon: <Compass className="w-4 h-4" />
-    },
-    {
-      title: 'Hypothesis Generator',
-      description: 'Develop testable hypotheses or core research questions.',
-      prompt: 'Synthesize my current work into 3 precise, testable research hypotheses based on the identified data gaps.',
-      icon: <Lightbulb className="w-4 h-4" />
-    },
-    {
-      title: 'Literature Synthesis',
-      description: 'Find themes across all my connected sources.',
-      prompt: 'Synthesize the main themes and tensions across my current library of sources as they relate to my manuscript.',
-      icon: <BookOpen className="w-4 h-4" />
-    }
-  ];
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -299,6 +379,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
           <Tabs value={activeMode} onValueChange={(v: any) => setActiveMode(v)} className="w-full">
             <TabsList className="w-full h-8 bg-slate-50 border border-slate-200">
               <TabsTrigger value="templates" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Templates</TabsTrigger>
+              <TabsTrigger value="questions" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Questions</TabsTrigger>
               <TabsTrigger value="web" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Web Search</TabsTrigger>
               <TabsTrigger value="custom" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Extraction</TabsTrigger>
             </TabsList>
@@ -308,28 +389,79 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
         <ScrollArea className="flex-1 p-4 bg-slate-50/50">
           <AnimatePresence mode="popLayout">
             {activeMode === 'templates' ? (
+              <ResearchTemplateSection onSelect={(prompt) => runResearch(prompt)} />
+            ) : activeMode === 'questions' ? (
               <motion.div 
-                key="templates"
+                key="questions"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                className="space-y-4"
               >
-                {templates.map((t, idx) => (
-                  <Card 
-                    key={idx} 
-                    className="group border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden rounded-xl"
-                    onClick={() => runResearch(t.prompt)}
-                  >
-                    <CardContent className="p-4 sm:p-5">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 flex items-center justify-center mb-4 shadow-sm group-hover:shadow-indigo-200">
-                        {t.icon}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <HelpCircle className="w-24 h-24" />
+                  </div>
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                        <Target className="w-4 h-4" />
                       </div>
-                      <h3 className="text-[12px] font-black text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{t.title}</h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium line-clamp-3">{t.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <div>
+                        <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-tight">Core Research Questions</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Inquiry Architecture</p>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 leading-relaxed font-medium mb-6">
+                      Generate sophisticated, multidimensional research questions based on your current manuscript content and library context.
+                    </p>
+
+                    <div className="space-y-3">
+                      <Button 
+                        variant="default"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 h-10 gap-2 text-[11px] uppercase font-black tracking-widest shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        onClick={() => runResearch("Generate 3 core research questions and 3 sub-questions that would drive a high-impact paper based on my current manuscript and keywords. Ensure they are structured across descriptive, analytical, and critical dimensions.")}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        Generate Core Questions
+                      </Button>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          variant="outline"
+                          className="h-9 border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50/30"
+                          onClick={() => runResearch("Formulate 3 exploratory research questions that focus on potential future directions or unknown variables in my current research space.")}
+                          disabled={isLoading}
+                        >
+                          Exploratory
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          className="h-9 border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50/30"
+                          onClick={() => runResearch("Generate 3 strictly methodology-focused research questions that challenge or refine the proposed research design in my manuscript.")}
+                          disabled={isLoading}
+                        >
+                          Methodological
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                    <Lightbulb className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-indigo-900 uppercase tracking-widest mb-1">Expert Tip</h4>
+                    <p className="text-[10px] text-indigo-700/80 leading-relaxed font-medium italic pr-2">
+                       "Strong research questions often bridge the gap between your unique data and broader theoretical frameworks found in your library sources."
+                    </p>
+                  </div>
+                </div>
               </motion.div>
             ) : activeMode === 'web' ? (
               <motion.div 
@@ -451,7 +583,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
               Generated Artifacts
             </h3>
             
-            {results.length === 0 && !isLoading && (
+            {artifacts.length === 0 && !isLoading && (
               <div className="py-12 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-xl">
                 <Sparkles className="w-8 h-8 mb-2 opacity-50" />
                 <p className="text-[11px] uppercase font-bold tracking-widest">No artifacts generated yet</p>
@@ -465,86 +597,24 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
               </div>
             )}
 
-            {results.map((res) => (
-              <Card key={res.id} className="bg-white border-slate-200 shadow-sm overflow-hidden group/card transition-all duration-300">
-                <div className="bg-slate-50/80 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="text-[9px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded uppercase tracking-tighter shrink-0">{res.type}</span>
-                    <span className="text-[10px] text-slate-500 font-medium truncate italic">{res.query}</span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={
-                        <button 
-                          className={`p-1 flex items-center gap-1.5 px-2 rounded-md transition-all ${refiningId === res.id ? 'text-indigo-600 bg-indigo-50 animate-pulse' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}
-                          disabled={!!refiningId}
-                        >
-                          {refiningId === res.id ? <RefreshCw className="w-3.5 h-3.5" /> : <Wand2 className="w-3.5 h-3.5" />}
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Refine</span>
-                        </button>
-                      } />
-                      <DropdownMenuContent align="end" className="w-48 p-1">
-                        <DropdownMenuItem onClick={() => refineResult(res.id, 'rephrase')} className="text-[11px] font-bold uppercase tracking-wider p-2 cursor-pointer">
-                          Rephrase (Academic)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => refineResult(res.id, 'expand')} className="text-[11px] font-bold uppercase tracking-wider p-2 cursor-pointer">
-                          Expand (Depth)
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <button 
-                      onClick={() => handleCopy(res.content)}
-                      className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-                      title="Copy content"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button 
-                      onClick={() => onInsertText(res.content)}
-                      className="p-1 text-slate-400 hover:text-emerald-600 transition-colors"
-                      title="Insert into document"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                   <div className={`${res.type === 'title' ? 'bg-indigo-50/30 p-4 rounded-lg border border-indigo-100/50' : ''} text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap font-serif`}>
-                     {res.content}
-                   </div>
-                   
-                   <div className="mt-4 flex flex-col gap-2">
-                     <div className="relative">
-                        <Input 
-                          placeholder="Custom refinement instructions (e.g., 'summarize', 'more data')..."
-                          className="h-8 text-[11px] pr-10 bg-slate-50/50 focus:bg-white transition-all border-slate-100"
-                          value={refiningId === res.id ? customRefiningPrompt : ''}
-                          onChange={(e) => {
-                            if (refiningId !== res.id) setRefiningId(res.id);
-                            setCustomRefiningPrompt(e.target.value);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') refineResult(res.id, 'custom');
-                          }}
-                        />
-                        <button 
-                          onClick={() => refineResult(res.id, 'custom')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500 hover:text-indigo-700 disabled:opacity-30"
-                          disabled={!customRefiningPrompt.trim() || (refiningId !== null && refiningId !== res.id)}
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                        </button>
-                     </div>
-                     <div className="pt-3 border-t border-slate-50 flex justify-between items-center">
-                        <span className="text-[9px] text-slate-300 font-mono uppercase tracking-widest">{new Date(res.timestamp).toLocaleTimeString()}</span>
-                        <div className="flex gap-2">
-                          <button onClick={() => refineResult(res.id, 'rephrase')} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Rephrase</button>
-                          <button onClick={() => refineResult(res.id, 'expand')} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Expand</button>
-                        </div>
-                     </div>
-                   </div>
-                </CardContent>
-              </Card>
+            {artifacts.map((res) => (
+              <ResearchArtifactCard 
+                key={res.id}
+                artifact={res}
+                sources={sources}
+                autoLinkingId={autoLinkingId}
+                refiningId={refiningId}
+                customRefiningPrompt={customRefiningPrompt}
+                onAutoLink={autoLinkArtifact}
+                onRefine={refineResult}
+                onCopy={handleCopy}
+                onInsert={onInsertText}
+                onToggleLink={toggleSourceLink}
+                onUpdateRefiningPrompt={(val) => {
+                  if (refiningId !== res.id) setRefiningId(res.id);
+                  setCustomRefiningPrompt(val);
+                }}
+              />
             ))}
           </div>
         </ScrollArea>

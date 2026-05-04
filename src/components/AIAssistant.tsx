@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { Send, Bot, User, Sparkles, RefreshCw, X } from 'lucide-react';
+import { Sparkles, X, Send } from 'lucide-react';
 import { AIAssistantMessage } from '@/src/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from '@google/genai';
+import { AIMessageList } from './assistant/AIMessageList';
+import { AIQuickActions } from './assistant/AIQuickActions';
 
 interface AIAssistantProps {
   paperContent: string;
@@ -22,17 +22,11 @@ export function AIAssistant({ paperContent, selectedText, sources, onClose }: AI
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight);
-    }
-  }, [messages]);
-
-  const handleSend = async (customPrompt?: string | React.MouseEvent | React.FormEvent) => {
-    const userMessage = typeof customPrompt === 'string' ? customPrompt.trim() : input.trim();
+  const handleSend = async (customPrompt?: string) => {
+    const userMessage = customPrompt || input.trim();
     if (!userMessage || isLoading) return;
 
-    setInput('');
+    if (!customPrompt) setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
@@ -61,7 +55,7 @@ export function AIAssistant({ paperContent, selectedText, sources, onClose }: AI
       `;
 
       const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
       });
       const responseText = result.text || 'No response generated.';
@@ -106,36 +100,7 @@ export function AIAssistant({ paperContent, selectedText, sources, onClose }: AI
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-6">
-          <AnimatePresence initial={false}>
-            {messages.map((m, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <div className={`p-3.5 rounded-lg text-[13px] leading-relaxed shadow-sm border ${
-                  m.role === 'user' 
-                  ? 'bg-white text-slate-700 border-slate-200 max-w-[90%]' 
-                  : 'bg-indigo-600 text-white border-indigo-500 max-w-[90%]'
-                }`}>
-                  {m.content}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="p-3 shadow-sm rounded-lg bg-white border border-slate-200 max-w-[90%] flex items-center gap-3">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" />
-                <span className="text-[11px] text-slate-500 font-medium italic">Synthesizing data...</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+      <AIMessageList messages={messages} isLoading={isLoading} scrollRef={scrollRef} />
 
       <div className="p-4 bg-white border-t border-slate-200">
         <div className="relative group">
@@ -150,23 +115,13 @@ export function AIAssistant({ paperContent, selectedText, sources, onClose }: AI
             size="icon" 
             variant="ghost" 
             className="absolute right-1 top-1 h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-white rounded"
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isLoading}
           >
             <Send className="w-3.5 h-3.5" />
           </Button>
         </div>
-        <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar shrink-0">
-          {['Rephrase', 'Expand', 'Counterarguments', 'Review tone', 'Fix citations', 'Grammar fix'].map((tool) => (
-            <button 
-              key={tool}
-              onClick={() => handleQuickAction(tool)}
-              className="flex-none px-2.5 py-1 rounded bg-slate-100 hover:bg-indigo-50 text-[9px] font-bold text-slate-500 hover:text-indigo-600 transition-all border border-slate-200/60 uppercase tracking-wider"
-            >
-              {tool}
-            </button>
-          ))}
-        </div>
+        <AIQuickActions onAction={handleQuickAction} />
       </div>
     </div>
   );

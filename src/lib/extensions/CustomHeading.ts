@@ -34,7 +34,14 @@ export const CustomHeading = Heading.extend({
           newState.doc.descendants((node, pos) => {
             if (node.type.name === 'heading') {
               if (!node.attrs.id) {
-                const id = node.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+                const text = node.textContent.trim();
+                const slug = text
+                  ? text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                  : 'section';
+                
+                // Add a unique suffix to avoid collisions
+                const id = `${slug}-${Math.random().toString(36).substring(2, 8)}`;
+                
                 tr.setNodeMarkup(pos, undefined, {
                   ...node.attrs,
                   id
