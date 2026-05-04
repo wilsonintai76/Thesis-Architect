@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: "Playfair Display", serif;
+    --font-sans: "Inter", sans-serif;
+    --font-serif: "Lora", serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(0.99 0 0);
+    --foreground: oklch(0.25 0.02 250);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.25 0.02 250);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.25 0.02 250);
+    --primary: oklch(0.45 0.18 265);
+    --primary-foreground: oklch(0.98 0.01 265);
+    --secondary: oklch(0.96 0.01 250);
+    --secondary-foreground: oklch(0.25 0.02 250);
+    --muted: oklch(0.96 0.01 250);
+    --muted-foreground: oklch(0.55 0.02 250);
+    --accent: oklch(0.96 0.01 250);
+    --accent-foreground: oklch(0.25 0.02 250);
+    --destructive: oklch(0.6 0.18 20);
+    --border: oklch(0.92 0 0);
+    --input: oklch(0.92 0 0);
+    --ring: oklch(0.45 0.18 265);
+    --radius: 0.4rem;
+    --sidebar: oklch(0.98 0.01 250);
+    --sidebar-foreground: oklch(0.25 0.02 250);
+    --sidebar-primary: oklch(0.45 0.18 265);
+    --sidebar-primary-foreground: oklch(0.98 0.01 265);
+    --sidebar-accent: oklch(1 0 0);
+    --sidebar-accent-foreground: oklch(0.25 0.02 250);
+    --sidebar-border: oklch(0.92 0 0);
+    --sidebar-ring: oklch(0.45 0.18 265);
+}
+
+.dark {
+    --background: oklch(0.15 0.02 250);
+    --foreground: oklch(0.95 0 0);
+    --card: oklch(0.18 0.02 250);
+    --card-foreground: oklch(0.95 0 0);
+    --popover: oklch(0.18 0.02 250);
+    --popover-foreground: oklch(0.95 0 0);
+    --primary: oklch(0.6 0.18 265);
+    --primary-foreground: oklch(0.15 0.02 250);
+    --secondary: oklch(0.25 0.02 250);
+    --secondary-foreground: oklch(0.95 0 0);
+    --muted: oklch(0.25 0.02 250);
+    --muted-foreground: oklch(0.65 0.02 250);
+    --accent: oklch(0.25 0.02 250);
+    --accent-foreground: oklch(0.95 0 0);
+    --destructive: oklch(0.45 0.18 20);
+    --border: oklch(0.28 0.02 250);
+    --input: oklch(0.28 0.02 250);
+    --ring: oklch(0.6 0.18 265);
+    --sidebar: oklch(0.15 0.02 250);
+    --sidebar-foreground: oklch(0.95 0 0);
+    --sidebar-primary: oklch(0.6 0.18 265);
+    --sidebar-primary-foreground: oklch(0.15 0.02 250);
+    --sidebar-accent: oklch(0.25 0.02 250);
+    --sidebar-accent-foreground: oklch(0.95 0 0);
+    --sidebar-border: oklch(0.28 0.02 250);
+    --sidebar-ring: oklch(0.6 0.18 265);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans antialiased;
+  }
+}
+
+/* TipTap Editor Styling */
+.ProseMirror {
+    outline: none !important;
+}
+
+.ProseMirror mark {
+    @apply bg-amber-200/60 rounded-sm px-0.5;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: oklch(0.65 0.02 250);
+    pointer-events: none;
+    height: 0;
+    font-family: var(--font-serif);
+    font-style: italic;
+}
+
+.ProseMirror h1 {
+    @apply text-3xl font-bold font-heading mt-12 mb-8 tracking-tight text-slate-900 uppercase text-center;
+}
+
+.ProseMirror h2 {
+    @apply text-xl font-semibold font-heading mt-10 mb-5 tracking-tight text-slate-800 border-b border-slate-100 pb-2 italic;
+}
+
+.ProseMirror p {
+    @apply mb-6 font-serif leading-loose text-[16px] text-slate-700 text-justify;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Academic Citation Style */
+[data-type="citation"] {
+    @apply !bg-indigo-50/50 !text-indigo-700 !border-indigo-200/50 px-2 py-0.5 rounded cursor-help font-medium transition-all hover:bg-indigo-100/50;
+}
+
+/* Collaboration Cursor Styling */
+.collaboration-cursor__caret {
+  border-left: 1px solid #0d0d0d;
+  border-right: 1px solid #0d0d0d;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+.collaboration-cursor__label {
+  border-radius: 3px 3px 3px 0;
+  color: #0d0d0d;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.1rem 0.3rem;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
