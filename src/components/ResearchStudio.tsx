@@ -2,7 +2,7 @@ import * as React from 'react';
 import { 
   Compass, Sparkles, Send, Copy, Plus, 
   Lightbulb, BookOpen, Quote, Target, X, 
-  RefreshCw, CheckCircle2, ChevronRight, Wand2
+  RefreshCw, CheckCircle2, ChevronRight, Wand2, Link as LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,56 +34,97 @@ interface ResearchResult {
   timestamp: number;
 }
 
+interface WebSource {
+  id: string;
+  url: string;
+  title: string;
+  analysis: string;
+  timestamp: string;
+}
+
 export function ResearchStudio({ paperContent, sources, onInsertText, onClose }: ResearchStudioProps) {
   const [prompt, setPrompt] = React.useState('');
+  const [url, setUrl] = React.useState('');
   const [keywords, setKeywords] = React.useState('');
   const [results, setResults] = React.useState<ResearchResult[]>([]);
+  const [webSources, setWebSources] = React.useState<WebSource[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [activeMode, setActiveMode] = React.useState<'custom' | 'templates'>('templates');
+  const [isExtracting, setIsExtracting] = React.useState(false);
+  const [activeMode, setActiveMode] = React.useState<'custom' | 'templates' | 'web'>('templates');
   const [refiningId, setRefiningId] = React.useState<string | null>(null);
+  const [customRefiningPrompt, setCustomRefiningPrompt] = React.useState('');
 
-  const runResearch = async (customPrompt?: string) => {
+  const runResearch = async (customPrompt?: string, mode: 'internal' | 'web' = 'internal') => {
     const query = customPrompt || prompt;
     if (!query || isLoading) return;
 
     setIsLoading(true);
-    setPrompt('');
+    if (!customPrompt) setPrompt('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-      
-      const systemPrompt = `
-        You are an advanced Research Design Expert. Your goal is to help a scholar refine their research project.
+      if (mode === 'web') {
+        const response = await fetch('/api/research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: query, focus: keywords })
+        });
+        const data = await response.json();
         
-        CONTEXT:
-        Manuscript Snippet: ${paperContent.slice(0, 2000)}
-        Selected Keywords: ${keywords || 'None specified'}
-        Sources Available: ${JSON.stringify(sources.map(s => ({ title: s.title, year: s.year })))}
+        const newResult: ResearchResult = {
+          id: Math.random().toString(36).substring(2, 9),
+          query: query.substring(0, 30) + (query.length > 30 ? '...' : ''),
+          content: data.content,
+          type: 'synthesis',
+          timestamp: Date.now()
+        };
+        setResults(prev => [newResult, ...prev]);
+        toast.success('Web research completed');
+      } else {
+        const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
         
-        TASK:
-        ${query}
+        const systemPrompt = `
+          You are a World-Class Academic Editor and Research Consultant specializing in high-impact publishing (Nature, Science, JSTOR).
+          
+          CONTEXT:
+          Manuscript Snippet: ${paperContent.slice(0, 3000)}
+          Focus Keywords: ${keywords || 'Context-driven'}
+          Available References: ${JSON.stringify(sources.map(s => ({ title: s.title, year: s.year })))}
+          
+          CORE TASK:
+          ${query}
+          
+          CONSTRAINTS FOR TITLES:
+          If generating titles, you MUST provide 5 distinct options:
+          1. The "Standard Bearer": Clear, descriptive, and professional.
+          2. The "Provocateur": A question-based title that challenges the status quo.
+          3. The "Methodologist": Highlights the unique technical approach or framework.
+          4. The "Narrative": A colon-separated title focusing on the key tension (e.g., Theme: A Study of...).
+          5. The "Modernist": Short, punchy, and memorable (maximum 7 words).
+          
+          FORMATTING:
+          Use clean Markdown with bold headings. For titles, use a numbered list.
+        `;
+
+        const result = await genAI.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: systemPrompt,
+        });
+
+        const responseText = result.text || 'Synthesis engine offline.';
         
-        FORMATTING:
-        Provide your output in clear, structured academic markdown. If generating titles, provide 3-5 options. If generating questions, ensure they are researchable and specific.
-      `;
+        const isTitleQuery = query.toLowerCase().includes('title');
+        
+        const newResult: ResearchResult = {
+          id: Math.random().toString(36).substring(2, 9),
+          query: isTitleQuery ? 'Academic Title Laboratory' : (query.length > 30 ? query.substring(0, 30) + '...' : query),
+          content: responseText,
+          type: isTitleQuery ? 'title' : 'synthesis',
+          timestamp: Date.now()
+        };
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: systemPrompt,
-      });
-
-      const responseText = result.text || 'Service unavailable.';
-      
-      const newResult: ResearchResult = {
-        id: Math.random().toString(36).substring(2, 9),
-        query: query.length > 30 ? query.substring(0, 30) + '...' : query,
-        content: responseText,
-        type: query.toLowerCase().includes('title') ? 'title' : 'synthesis',
-        timestamp: Date.now()
-      };
-
-      setResults(prev => [newResult, ...prev]);
-      toast.success('Research synthesis complete');
+        setResults(prev => [newResult, ...prev]);
+        toast.success('Research synthesis complete');
+      }
     } catch (error) {
       toast.error('Research service error');
     } finally {
@@ -91,32 +132,75 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
     }
   };
 
-  const refineResult = async (id: string, instruction: 'rephrase' | 'expand') => {
+  const extractSource = async () => {
+    if (!url || isExtracting) return;
+    
+    setIsExtracting(true);
+    const toastId = toast.loading('Extracting source data...');
+
+    try {
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await response.json();
+      
+      const newSource: WebSource = {
+        id: Math.random().toString(36).substring(2, 9),
+        ...data
+      };
+      
+      setWebSources(prev => [newSource, ...prev]);
+      setUrl('');
+      toast.success('Source extracted successfully', { id: toastId });
+    } catch (error) {
+      toast.error('Extraction failed', { id: toastId });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const refineResult = async (id: string, instruction: 'rephrase' | 'expand' | 'custom') => {
     const resultToRefine = results.find(r => r.id === id);
     if (!resultToRefine || refiningId) return;
 
+    const finalInstruction = instruction === 'custom' ? customRefiningPrompt : instruction;
+    if (instruction === 'custom' && !customRefiningPrompt.trim()) {
+      toast.error('Please provide refinement instructions');
+      return;
+    }
+
     setRefiningId(id);
-    const toastId = toast.loading(`${instruction === 'rephrase' ? 'Rephrasing' : 'Expanding'} artifact...`);
+    const toastId = toast.loading(`${instruction === 'custom' ? 'Refining' : instruction === 'rephrase' ? 'Rephrasing' : 'Expanding'} artifact...`);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+      const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
       
+      let specificInstruction = '';
+      if (instruction === 'rephrase') {
+        specificInstruction = 'Provide a more academic, professional, and clear version of this content while maintaining all core information.';
+      } else if (instruction === 'expand') {
+        specificInstruction = 'Elaborate on the points mentioned, providing more depth, theoretical grounding, and specific examples where appropriate.';
+      } else {
+        specificInstruction = `Refine this content based on the following specific request: ${customRefiningPrompt}`;
+      }
+
       const refinementPrompt = `
-        You are an advanced Research Design Expert. Please ${instruction} the following content.
+        You are an advanced Research Design Expert. Review the original artifact and apply the refinement instructions.
         
         ORIGINAL CONTENT:
         ${resultToRefine.content}
         
-        ${instruction === 'rephrase' 
-          ? 'Provide a more academic, professional, and clear version of this content while maintaining all core information.' 
-          : 'Elaborate on the points mentioned, providing more depth, theoretical grounding, and specific examples where appropriate.'}
+        REFINEMENT TASK:
+        ${specificInstruction}
         
         FORMATTING:
         Maintain the same structured academic markdown format.
       `;
 
-      const result = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+      const result = await genAI.models.generateContent({
+        model: 'gemini-1.5-flash',
         contents: refinementPrompt,
       });
 
@@ -126,7 +210,8 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
         r.id === id ? { ...r, content: refinedText, timestamp: Date.now() } : r
       ));
       
-      toast.success(`Artifact ${instruction}d successfully`, { id: toastId });
+      setCustomRefiningPrompt('');
+      toast.success(`Artifact refined successfully`, { id: toastId });
     } catch (error) {
       toast.error('Refinement failed', { id: toastId });
     } finally {
@@ -138,19 +223,19 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
     {
       title: 'Academic Title Lab',
       description: 'Generate 5 sophisticated research titles based on my manuscript.',
-      prompt: 'Generate 5 sophisticated, punchy, and academic research titles that accurately reflect the current manuscript for a high-impact journal.',
+      prompt: 'Generate 5 high-impact academic titles. Provide 1 descriptive, 1 question-based, 1 methodology-focused, 1 colon-separated, and 1 punchy modernist title.',
       icon: <Target className="w-4 h-4" />
     },
     {
-      title: 'Gap Analysis',
-      description: 'Identify potential research gaps based on my current focus.',
-      prompt: 'Based on my manuscript and connected sources, identify 3 significant research gaps or "unanswered questions" that could be explored further in this paper.',
+      title: 'Gap Identification',
+      description: 'Identify 3 potential research gaps or unanswered questions.',
+      prompt: 'Identify 3 potential research gaps or unanswered questions in the current manuscript, drawing connections to the available sources and keywords provided.',
       icon: <Compass className="w-4 h-4" />
     },
     {
-      title: 'Hypothesis Crafter',
+      title: 'Hypothesis Generator',
       description: 'Develop testable hypotheses or core research questions.',
-      prompt: 'Synthesize my current work into 2-3 precise, testable research hypotheses or central research questions.',
+      prompt: 'Synthesize my current work into 3 precise, testable research hypotheses based on the identified data gaps.',
       icon: <Lightbulb className="w-4 h-4" />
     },
     {
@@ -214,7 +299,8 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
           <Tabs value={activeMode} onValueChange={(v: any) => setActiveMode(v)} className="w-full">
             <TabsList className="w-full h-8 bg-slate-50 border border-slate-200">
               <TabsTrigger value="templates" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Templates</TabsTrigger>
-              <TabsTrigger value="custom" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Custom Prompt</TabsTrigger>
+              <TabsTrigger value="web" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Web Search</TabsTrigger>
+              <TabsTrigger value="custom" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Extraction</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -227,23 +313,54 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="grid grid-cols-2 gap-3"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
                 {templates.map((t, idx) => (
                   <Card 
                     key={idx} 
-                    className="group border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                    className="group border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden rounded-xl"
                     onClick={() => runResearch(t.prompt)}
                   >
-                    <CardContent className="p-3">
-                      <div className="w-7 h-7 rounded bg-slate-100 text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-colors flex items-center justify-center mb-2">
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 flex items-center justify-center mb-4 shadow-sm group-hover:shadow-indigo-200">
                         {t.icon}
                       </div>
-                      <h3 className="text-[11px] font-bold text-slate-800 mb-1 group-hover:text-indigo-600 truncate">{t.title}</h3>
-                      <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">{t.description}</p>
+                      <h3 className="text-[12px] font-black text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{t.title}</h3>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium line-clamp-3">{t.description}</p>
                     </CardContent>
                   </Card>
                 ))}
+              </motion.div>
+            ) : activeMode === 'web' ? (
+              <motion.div 
+                key="web"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
+              >
+                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 font-mono flex items-center gap-2">
+                    <Sparkles className="w-3 h-3" /> Live Web Research
+                  </label>
+                  <textarea 
+                    className="w-full min-h-[100px] bg-slate-50 border border-slate-100 p-3 text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-md transition-all resize-none"
+                    placeholder="Enter research query (e.g., 'Recent breakthroughs in carbon capture 2025')..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button 
+                      size="sm" 
+                      className="bg-indigo-600 hover:bg-indigo-700 h-8 gap-2 text-[11px] uppercase font-bold tracking-wider"
+                      onClick={() => runResearch(undefined, 'web')}
+                      disabled={isLoading || !prompt.trim()}
+                    >
+                      {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      Search Live Web
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             ) : (
               <motion.div 
@@ -253,6 +370,57 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-4"
               >
+                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 font-mono flex items-center gap-2">
+                    <LinkIcon className="w-3 h-3" /> Auto-Source Extractor
+                  </label>
+                  <div className="flex gap-2">
+                    <Input 
+                      className="h-8 text-[11px] bg-slate-50 flex-1"
+                      placeholder="Paste scholarly URL here..."
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && extractSource()}
+                    />
+                    <Button 
+                      size="sm" 
+                      className="h-8 bg-indigo-600 hover:bg-indigo-700"
+                      onClick={extractSource}
+                      disabled={isExtracting || !url.trim()}
+                    >
+                      {isExtracting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-[9px] text-slate-400 uppercase font-bold tracking-tighter">Enter a URL to summarize and cite automatically</p>
+                </div>
+
+                {webSources.map((source) => (
+                  <Card key={source.id} className="bg-white/50 border-slate-100 shadow-sm overflow-hidden">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        <h4 className="text-[10px] font-bold text-slate-700 truncate">{source.title}</h4>
+                      </div>
+                      <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-indigo-600 hover:underline shrink-0">Source</a>
+                    </div>
+                    <CardContent className="p-3">
+                       <div className="text-[11px] text-slate-600 leading-relaxed font-serif whitespace-pre-wrap italic opacity-80">
+                         {source.analysis}
+                       </div>
+                       <div className="mt-3 flex justify-end gap-2">
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           className="h-6 text-[9px] font-bold uppercase tracking-wider text-indigo-600 hover:bg-indigo-50"
+                           onClick={() => onInsertText(source.analysis)}
+                         >
+                           Add to Paper
+                         </Button>
+                       </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
                 <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Detailed Prompting</label>
                   <textarea 
@@ -298,7 +466,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
             )}
 
             {results.map((res) => (
-              <Card key={res.id} className="bg-white border-slate-200 shadow-sm overflow-hidden">
+              <Card key={res.id} className="bg-white border-slate-200 shadow-sm overflow-hidden group/card transition-all duration-300">
                 <div className="bg-slate-50/80 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <span className="text-[9px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded uppercase tracking-tighter shrink-0">{res.type}</span>
@@ -308,18 +476,19 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
                     <DropdownMenu>
                       <DropdownMenuTrigger render={
                         <button 
-                          className={`p-1 transition-colors ${refiningId === res.id ? 'text-indigo-600 animate-spin' : 'text-slate-400 hover:text-indigo-600'}`}
+                          className={`p-1 flex items-center gap-1.5 px-2 rounded-md transition-all ${refiningId === res.id ? 'text-indigo-600 bg-indigo-50 animate-pulse' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}
                           disabled={!!refiningId}
                         >
                           {refiningId === res.id ? <RefreshCw className="w-3.5 h-3.5" /> : <Wand2 className="w-3.5 h-3.5" />}
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Refine</span>
                         </button>
                       } />
-                      <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem onClick={() => refineResult(res.id, 'rephrase')} className="text-[11px] font-bold uppercase tracking-wider">
-                          Rephrase
+                      <DropdownMenuContent align="end" className="w-48 p-1">
+                        <DropdownMenuItem onClick={() => refineResult(res.id, 'rephrase')} className="text-[11px] font-bold uppercase tracking-wider p-2 cursor-pointer">
+                          Rephrase (Academic)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => refineResult(res.id, 'expand')} className="text-[11px] font-bold uppercase tracking-wider">
-                          Expand
+                        <DropdownMenuItem onClick={() => refineResult(res.id, 'expand')} className="text-[11px] font-bold uppercase tracking-wider p-2 cursor-pointer">
+                          Expand (Depth)
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -340,11 +509,39 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
                   </div>
                 </div>
                 <CardContent className="p-4">
-                   <div className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap font-serif">
+                   <div className={`${res.type === 'title' ? 'bg-indigo-50/30 p-4 rounded-lg border border-indigo-100/50' : ''} text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap font-serif`}>
                      {res.content}
                    </div>
-                   <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end">
-                      <span className="text-[9px] text-slate-300 font-mono uppercase tracking-widest">{new Date(res.timestamp).toLocaleTimeString()}</span>
+                   
+                   <div className="mt-4 flex flex-col gap-2">
+                     <div className="relative">
+                        <Input 
+                          placeholder="Custom refinement instructions (e.g., 'summarize', 'more data')..."
+                          className="h-8 text-[11px] pr-10 bg-slate-50/50 focus:bg-white transition-all border-slate-100"
+                          value={refiningId === res.id ? customRefiningPrompt : ''}
+                          onChange={(e) => {
+                            if (refiningId !== res.id) setRefiningId(res.id);
+                            setCustomRefiningPrompt(e.target.value);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') refineResult(res.id, 'custom');
+                          }}
+                        />
+                        <button 
+                          onClick={() => refineResult(res.id, 'custom')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500 hover:text-indigo-700 disabled:opacity-30"
+                          disabled={!customRefiningPrompt.trim() || (refiningId !== null && refiningId !== res.id)}
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                     </div>
+                     <div className="pt-3 border-t border-slate-50 flex justify-between items-center">
+                        <span className="text-[9px] text-slate-300 font-mono uppercase tracking-widest">{new Date(res.timestamp).toLocaleTimeString()}</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => refineResult(res.id, 'rephrase')} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Rephrase</button>
+                          <button onClick={() => refineResult(res.id, 'expand')} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Expand</button>
+                        </div>
+                     </div>
                    </div>
                 </CardContent>
               </Card>

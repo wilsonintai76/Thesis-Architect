@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&display=swap');
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -118,6 +119,129 @@
   html {
     @apply font-sans antialiased;
   }
+}
+
+/* Academic Style Overrides */
+.style-apa {
+    --font-heading: var(--font-serif);
+}
+
+.style-ieee {
+    --font-heading: var(--font-sans);
+}
+
+.style-apa .ProseMirror {
+    @apply font-serif;
+    line-height: 2.0 !important;
+    font-size: 16px !important;
+}
+
+.style-ieee .ProseMirror {
+    @apply font-serif;
+    line-height: 1.5 !important;
+    font-size: 14px !important;
+}
+
+.style-apa .ProseMirror h1 {
+    @apply capitalize not-italic border-none;
+}
+
+.style-ieee .ProseMirror h1 {
+    @apply uppercase;
+}
+
+.style-ieee .ProseMirror h1,
+.style-ieee .ProseMirror h2,
+.style-ieee .ProseMirror h3 {
+    @apply font-sans not-italic;
+}
+
+.style-apa .ProseMirror h1,
+.style-apa .ProseMirror h2,
+.style-apa .ProseMirror h3 {
+    @apply font-serif border-none;
+}
+
+/* TipTap Table Styling */
+.ProseMirror table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 2rem 0;
+    overflow: hidden;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+    min-width: 1em;
+    border: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.ProseMirror th {
+    font-weight: bold;
+    text-align: left;
+    background-color: #f8fafc;
+}
+
+.ProseMirror .selectedCell:after {
+    z-index: 2;
+    position: absolute;
+    content: "";
+    left: 0; right: 0; top: 0; bottom: 0;
+    background: rgba(200, 200, 255, 0.4);
+    pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #adf;
+    pointer-events: none;
+}
+
+.ProseMirror .tableWrapper {
+    overflow-x: auto;
+}
+
+.ProseMirror .resize-cursor {
+    cursor: ew-resize;
+    cursor: col-resize;
+}
+
+/* Academic Table Styles */
+.style-apa .ProseMirror table {
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
+}
+.style-apa .ProseMirror th {
+    border-bottom: 1px solid black;
+    background: transparent;
+}
+.style-apa .ProseMirror td, .style-apa .ProseMirror th {
+    border-left: none;
+    border-right: none;
+}
+
+/* Math styling */
+.science-math {
+    display: inline-block;
+    padding: 0 4px;
+    vertical-align: middle;
+}
+
+.math-error {
+    color: #e11d48;
+    background-color: #fff1f2;
+    padding: 0 4px;
+    border-radius: 2px;
+    font-family: var(--font-mono);
 }
 
 /* TipTap Editor Styling */

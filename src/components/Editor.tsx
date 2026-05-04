@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
@@ -7,16 +7,71 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import CharacterCount from '@tiptap/extension-character-count';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
+
+// Custom extension for Yjs History
+const YjsHistory = Extension.create({
+  name: 'yjsHistory',
+
+  addOptions() {
+    return {
+      ydoc: null as Y.Doc | null,
+    }
+  },
+
+  addStorage() {
+    return {
+      undoManager: null as Y.UndoManager | null,
+    }
+  },
+
+  onCreate() {
+    if (this.options.ydoc) {
+      this.storage.undoManager = new Y.UndoManager(this.options.ydoc.getXmlFragment('prosemirror'))
+    }
+  },
+
+  addCommands() {
+    return {
+      undo: () => ({ editor }) => {
+        const canUndo = this.storage.undoManager?.canUndo()
+        if (canUndo) {
+          this.storage.undoManager?.undo()
+        }
+        return !!canUndo
+      },
+      redo: () => ({ editor }) => {
+        const canRedo = this.storage.undoManager?.canRedo()
+        if (canRedo) {
+          this.storage.undoManager?.redo()
+        }
+        return !!canRedo
+      },
+    }
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-z': () => this.editor.commands.undo(),
+      'Mod-y': () => this.editor.commands.redo(),
+      'Mod-Shift-z': () => this.editor.commands.redo(),
+    }
+  },
+})
 import { WebsocketProvider } from 'y-websocket';
 import randomColor from 'randomcolor';
 import { 
   Bold, Italic, List, ListOrdered, Quote, Link as LinkIcon, 
   Underline as UnderlineIcon, Highlighter, Type, AlignLeft, 
   AlignCenter, AlignRight, BookMarked, Hash, Wand2, Users, MessageSquareQuote, History,
-  Image as ImageIcon
+  Image as ImageIcon, Undo, Redo, Table as TableIcon, Columns, PlusSquare, Trash2,
+  Sigma, Calculator
 } from 'lucide-react';
 import { Citation } from '@/src/lib/extensions/Citation';
 import { Footnote } from '@/src/lib/extensions/Footnote';
@@ -28,10 +83,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { CustomHeading } from '@/src/lib/extensions/CustomHeading';
+import { Mathematics } from '@/src/lib/extensions/Mathematics';
 
 interface EditorProps {
   content: string;
   sources: Source[];
+  selectedProfileId: string;
   versionToRestore?: DocumentVersion | null;
   sourceToInsert?: Source | null;
   textToInsert?: string | null;
@@ -50,11 +107,13 @@ const colors = [
 const getRandomColor = () => colors[Math.floor(Math.random() * colors.length)];
 const getRandomName = () => `Researcher ${Math.floor(Math.random() * 100)}`;
 
-export function Editor({ content, sources, versionToRestore, sourceToInsert, textToInsert, onInsertSourceComplete, onInsertTextComplete, onSelectionChange, onChange, onAISuggest, onSaveVersion, onOpenVersions }: EditorProps) {
+export function Editor({ content, sources, selectedProfileId, versionToRestore, sourceToInsert, textToInsert, onInsertSourceComplete, onInsertTextComplete, onSelectionChange, onChange, onAISuggest, onSaveVersion, onOpenVersions }: EditorProps) {
   const [status, setStatus] = React.useState('connecting');
   const [users, setUsers] = React.useState<any[]>([]);
   const [footnoteContent, setFootnoteContent] = React.useState('');
   const [isFootnotePopoverOpen, setIsFootnotePopoverOpen] = React.useState(false);
+  const [latexInput, setLatexInput] = React.useState('');
+  const [isMathPopoverOpen, setIsMathPopoverOpen] = React.useState(false);
 
   // Set up Yjs document and provider
   const [{ provider, ydoc }] = React.useState(() => {
@@ -105,6 +164,12 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
       Citation,
       Footnote,
       CharacterCount,
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Collaboration.configure({
         document: ydoc,
       }),
@@ -114,6 +179,10 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
           name: getRandomName(),
           color: getRandomColor(),
         },
+      }),
+      Mathematics,
+      YjsHistory.configure({
+        ydoc: ydoc,
       }),
     ],
     // Don't pass initial content when using collaboration!
@@ -144,10 +213,23 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-zinc max-w-none focus:outline-none min-h-[500px] font-serif leading-relaxed collabo-editor',
+        class: `prose prose-zinc max-w-none focus:outline-none min-h-[500px] leading-relaxed collabo-editor style-${selectedProfileId}`,
       },
     },
   });
+
+  // Dynamically update editor classes when profile changes
+  React.useEffect(() => {
+    if (editor) {
+      editor.setOptions({
+        editorProps: {
+          attributes: {
+            class: `prose prose-zinc max-w-none focus:outline-none min-h-[500px] leading-relaxed collabo-editor style-${selectedProfileId}`,
+          },
+        },
+      });
+    }
+  }, [selectedProfileId, editor]);
 
   React.useEffect(() => {
     if (versionToRestore && editor) {
@@ -201,6 +283,29 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
     <div className="flex flex-col h-full bg-slate-200 relative overflow-hidden">
       <div className="sticky top-0 z-10 flex items-center justify-between p-2 border-b border-slate-300 bg-white/95 backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            className="w-8 h-8 text-slate-600 disabled:opacity-30"
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            className="w-8 h-8 text-slate-600 disabled:opacity-30"
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo className="w-4 h-4" />
+          </Button>
+
+          <Separator orientation="vertical" className="h-4 mx-1 bg-slate-200" />
+
           <Button
             size="icon"
             variant="ghost"
@@ -273,6 +378,144 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
           >
             <ImageIcon className="w-4 h-4" />
           </Button>
+
+          <Popover>
+            <PopoverTrigger render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 text-slate-600 hover:text-indigo-600"
+                title="Table Operations"
+              >
+                <TableIcon className="w-4 h-4" />
+              </Button>
+            } />
+            <PopoverContent className="w-48 p-1 shadow-xl border-slate-200" align="start">
+              <div className="grid grid-cols-1 gap-0.5">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="justify-start h-8 text-[11px] font-medium"
+                  onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+                >
+                  <PlusSquare className="w-3.5 h-3.5 mr-2" /> Insert 3x3 Table
+                </Button>
+                <Separator className="my-1" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="justify-start h-8 text-[11px] font-medium"
+                  onClick={() => editor.chain().focus().addColumnBefore().run()}
+                  disabled={!editor.can().addColumnBefore()}
+                >
+                  <Columns className="w-3.5 h-3.5 mr-2 rotate-180" /> Add Column Before
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="justify-start h-8 text-[11px] font-medium"
+                  onClick={() => editor.chain().focus().addColumnAfter().run()}
+                  disabled={!editor.can().addColumnAfter()}
+                >
+                  <Columns className="w-3.5 h-3.5 mr-2" /> Add Column After
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="justify-start h-8 text-[11px] font-medium text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                  onClick={() => editor.chain().focus().deleteTable().run()}
+                  disabled={!editor.can().deleteTable()}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Table
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover open={isMathPopoverOpen} onOpenChange={setIsMathPopoverOpen}>
+            <PopoverTrigger render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 text-slate-600 hover:text-indigo-600"
+                title="Insert Formula (LaTeX)"
+              >
+                <Sigma className="w-4 h-4" />
+              </Button>
+            } />
+            <PopoverContent className="w-72 p-3 shadow-2xl border-slate-200" align="start">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Math Formula (LaTeX)</p>
+              <div className="space-y-2">
+                <Input
+                  placeholder="e.g. E=mc^2"
+                  value={latexInput}
+                  onChange={(e) => setLatexInput(e.target.value)}
+                  className="text-xs h-8"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      editor.chain().focus().setMathematics({ latex: latexInput }).run();
+                      setLatexInput('');
+                      setIsMathPopoverOpen(false);
+                    }
+                  }}
+                />
+                <Button 
+                  className="w-full h-8 bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold"
+                  onClick={() => {
+                    editor.chain().focus().setMathematics({ latex: latexInput }).run();
+                    setLatexInput('');
+                    setIsMathPopoverOpen(false);
+                  }}
+                >
+                  Insert Equation
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 text-slate-600 hover:text-indigo-600"
+                title="Scientific Symbols"
+              >
+                <Calculator className="w-4 h-4" />
+              </Button>
+            } />
+            <PopoverContent className="w-64 p-2 shadow-2xl border-slate-200" align="start">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Common Symbols</p>
+              <div className="grid grid-cols-6 gap-1">
+                {[
+                  { s: 'α', l: '\\alpha' }, { s: 'β', l: '\\beta' }, { s: 'γ', l: '\\gamma' }, 
+                  { s: 'δ', l: '\\delta' }, { s: 'ε', l: '\\epsilon' }, { s: 'θ', l: '\\theta' },
+                  { s: 'λ', l: '\\lambda' }, { s: 'μ', l: '\\mu' }, { s: 'π', l: '\\pi' }, 
+                  { s: 'σ', l: '\\sigma' }, { s: 'ω', l: '\\omega' }, { s: 'Δ', l: '\\Delta' },
+                  { s: 'Σ', l: '\\sum' }, { s: '∫', l: '\\int' }, { s: '√', l: '\\sqrt{}' },
+                  { s: '∞', l: '\\infty' }, { s: '≈', l: '\\approx' }, { s: '≠', l: '\\neq' },
+                  { s: '≤', l: '\\leq' }, { s: '≥', l: '\\geq' }, { s: '→', l: '\\rightarrow' },
+                  { s: '∂', l: '\\partial' }, { s: '±', l: '\\pm' }, { s: '×', l: '\\times' }
+                ].map((item) => (
+                  <Button
+                    key={item.s}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-sm hover:bg-indigo-50 hover:text-indigo-600"
+                    onClick={() => {
+                      if (item.l.startsWith('\\')) {
+                        editor.chain().focus().setMathematics({ latex: item.l }).run();
+                      } else {
+                        editor.chain().focus().insertContent(item.s).run();
+                      }
+                    }}
+                  >
+                    {item.s}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Separator orientation="vertical" className="h-4 mx-1 bg-slate-200" />
 
@@ -409,7 +652,7 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="max-w-[580px] mx-auto my-12 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-300 p-20 min-h-[850px] relative">
+        <div className="max-w-[820px] mx-auto my-12 bg-white shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-slate-200 p-16 sm:p-24 min-h-[1050px] relative transition-all duration-500">
           {editor && (
             <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
               <div className="flex items-center gap-0.5 p-1 bg-slate-900 border border-slate-800 rounded shadow-2xl">
@@ -460,7 +703,7 @@ export function Editor({ content, sources, versionToRestore, sourceToInsert, tex
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
             Cloud Synced
           </span>
-          <span>Style: Academic / Serif</span>
+          <span>Style: {selectedProfileId.toUpperCase()} / {selectedProfileId === 'ieee' ? 'Sans/Serif Mix' : 'Full Serif'}</span>
         </div>
       </div>
     </div>

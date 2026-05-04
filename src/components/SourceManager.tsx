@@ -128,20 +128,23 @@ export function SourceManager({ sources, citationCounts = {}, onAddSource, onRem
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] border-r border-slate-200 w-64 shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.05)]">
-      <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-        <div className="flex flex-col gap-3 mb-2">
-          <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Research Library</h2>
+    <div className="flex flex-col h-full bg-slate-50/50 border-r border-slate-200 w-72 shrink-0 shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.05)] transition-all duration-300 overflow-hidden">
+      <div className="p-5 border-b border-slate-200 bg-white">
+        <div className="flex flex-col gap-4 mb-2">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-3.5 h-3.5 text-indigo-500" />
+            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Research Library</h2>
+          </div>
           <div className="flex gap-2">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger render={
-                <Button size="sm" className="flex-1 h-8 gap-2 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-100">
-                  <Plus className="w-3.5 h-3.5" /> Add
+                <Button size="sm" className="flex-1 h-9 gap-2 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-all font-bold text-[10px] uppercase tracking-wider rounded-lg">
+                  <Plus className="w-3.5 h-3.5" /> Add Source
                 </Button>
               } />
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md bg-white">
                 <DialogHeader>
-                  <DialogTitle className="font-heading italic">New Research Entry</DialogTitle>
+                  <DialogTitle className="font-heading italic text-slate-900 border-b border-slate-100 pb-2">New Research Entry</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
@@ -265,58 +268,58 @@ TI  - Exploring AI..."
         </div>
       </div>
 
-      <ScrollArea className="flex-1 px-3">
-        <div className="space-y-3 py-4">
-          <div className="mb-4">
+      <ScrollArea className="flex-1 px-4">
+        <div className="space-y-4 py-6">
+          <div className="mb-2">
             <Input 
-              placeholder="Search sources..." 
+              placeholder="Search library..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 text-xs border-slate-200"
+              className="h-10 text-[13px] bg-white border-slate-200 shadow-sm rounded-lg"
             />
           </div>
-          <div className="flex gap-1.5 mb-4">
-            <div className="bg-slate-200 text-[9px] font-bold px-2 py-0.5 rounded text-slate-600 uppercase tracking-tighter">APA 7th</div>
-            <div className="text-[9px] font-bold px-2 py-0.5 text-slate-400 uppercase tracking-tighter">MLA</div>
-            <div className="text-[9px] font-bold px-2 py-0.5 text-slate-400 uppercase tracking-tighter">Chicago</div>
+          <div className="flex gap-2 mb-6">
+            <div className="bg-indigo-600 text-[9px] font-black px-2.5 py-1 rounded text-white uppercase tracking-widest shadow-sm">APA 7</div>
+            <div className="text-[9px] font-black px-2.5 py-1 text-slate-400 uppercase tracking-widest hover:text-slate-600 cursor-pointer transition-colors">MLA</div>
+            <div className="text-[9px] font-black px-2.5 py-1 text-slate-400 uppercase tracking-widest hover:text-slate-600 cursor-pointer transition-colors">Chicago</div>
           </div>
           {filteredSources.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-20" />
-              <p className="text-[11px] font-medium leading-relaxed italic">Your bibliography is currently empty.</p>
+            <div className="text-center py-16 text-slate-300">
+              <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20" />
+              <p className="text-[11px] font-bold uppercase tracking-widest leading-relaxed italic px-4">Your conceptual library is currently silent.</p>
             </div>
           ) : (
             filteredSources.sort((a, b) => b.addedAt - a.addedAt).map((source) => (
-              <Card key={source.id} className="shadow-sm border border-slate-200 bg-white rounded overflow-hidden group">
-                <CardContent className="p-3 border-l-4 border-transparent group-hover:border-indigo-500 transition-all">
-                  <div className="flex items-start justify-between gap-1 mb-1">
-                    <p className="text-[11px] font-bold text-slate-900 leading-tight">
+              <Card key={source.id} className="shadow-sm hover:shadow-md border border-slate-200 bg-white rounded-xl overflow-hidden group transition-all duration-200 hover:-translate-y-0.5">
+                <CardContent className="p-4 border-l-4 border-transparent group-hover:border-indigo-600 transition-all">
+                  <div className="flex items-start justify-between gap-1 mb-1.5">
+                    <p className="text-[12px] font-black text-slate-900 leading-tight tracking-tight">
                       {source.authors.split(',')[0]} ({source.year})
                     </p>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="w-5 h-5 text-slate-300 hover:text-destructive shrink-0"
+                      className="w-6 h-6 text-slate-200 hover:text-rose-500 hover:bg-rose-50 shrink-0 transition-colors"
                       onClick={() => onRemoveSource(source.id)}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-                  <h3 className="text-[10px] text-slate-500 line-clamp-2 leading-snug font-serif italic mb-2">
+                  <h3 className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-serif italic mb-3">
                     {source.title}
                   </h3>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
+                    <div className="flex items-center gap-3">
                       <button 
                         onClick={() => onInsertSource(source)}
-                        className="text-[9px] text-indigo-600 font-bold uppercase tracking-wider hover:underline"
+                        className="text-[10px] text-indigo-600 font-black uppercase tracking-wider hover:text-indigo-800 transition-colors"
                       >
-                        Insert
+                        Cite
                       </button>
-                      <button className="text-[9px] text-slate-400 font-bold uppercase tracking-wider hover:text-slate-600">Details</button>
+                      <button className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:text-slate-700 transition-colors">Explore</button>
                     </div>
                     {citationCounts[source.id] > 0 && (
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded shadow-sm border border-emerald-100">
+                      <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shadow-sm border border-emerald-100/50">
                         <Hash className="w-2.5 h-2.5" />
                         <span>{citationCounts[source.id]}</span>
                       </div>
