@@ -36,6 +36,7 @@ interface ResearchResult {
 
 export function ResearchStudio({ paperContent, sources, onInsertText, onClose }: ResearchStudioProps) {
   const [prompt, setPrompt] = React.useState('');
+  const [keywords, setKeywords] = React.useState('');
   const [results, setResults] = React.useState<ResearchResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [activeMode, setActiveMode] = React.useState<'custom' | 'templates'>('templates');
@@ -56,6 +57,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
         
         CONTEXT:
         Manuscript Snippet: ${paperContent.slice(0, 2000)}
+        Selected Keywords: ${keywords || 'None specified'}
         Sources Available: ${JSON.stringify(sources.map(s => ({ title: s.title, year: s.year })))}
         
         TASK:
@@ -66,7 +68,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
       `;
 
       const result = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3-flash-preview',
         contents: systemPrompt,
       });
 
@@ -114,7 +116,7 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
       `;
 
       const result = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3-flash-preview',
         contents: refinementPrompt,
       });
 
@@ -185,7 +187,30 @@ export function ResearchStudio({ paperContent, sources, onInsertText, onClose }:
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 bg-white border-b border-slate-100">
+        <div className="p-4 bg-white border-b border-slate-100 space-y-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Target className="w-3 h-3" /> Focus Keywords
+              </label>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 gap-1.5"
+                onClick={() => runResearch('Generate 5 highly targeted, professional research paper titles that incorporate these keywords and the current manuscript context. Ensure they vary in style (e.g., standard, colon-separated, question-style).')}
+                disabled={isLoading}
+              >
+                <Sparkles className="w-3 h-3" /> Suggest Titles
+              </Button>
+            </div>
+            <Input 
+              placeholder="E.g., quantum computing, ethics, longitudinal study..." 
+              className="h-8 text-[11px] bg-slate-50 border-slate-200"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+            />
+          </div>
+
           <Tabs value={activeMode} onValueChange={(v: any) => setActiveMode(v)} className="w-full">
             <TabsList className="w-full h-8 bg-slate-50 border border-slate-200">
               <TabsTrigger value="templates" className="flex-1 text-[10px] uppercase font-bold tracking-wider">Templates</TabsTrigger>

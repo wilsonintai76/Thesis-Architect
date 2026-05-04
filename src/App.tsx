@@ -17,7 +17,7 @@ import { Toaster, toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { STYLE_PROFILES } from './constants/styleProfiles';
 
 export default function App() {
@@ -265,21 +265,23 @@ export default function App() {
                     </Button>
                   } />
                   <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">Examiner Presets</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {Object.values(STYLE_PROFILES).map((profile) => (
-                      <DropdownMenuItem 
-                        key={profile.id} 
-                        onClick={() => setSelectedProfileId(profile.id)}
-                        className="flex flex-col items-start gap-0.5 py-2"
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-bold text-xs">{profile.name}</span>
-                          {selectedProfileId === profile.id && <Check className="w-3 h-3 text-indigo-600" />}
-                        </div>
-                        <span className="text-[9px] text-slate-500 line-clamp-1">{profile.description}</span>
-                      </DropdownMenuItem>
-                    ))}
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">Examiner Presets</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {Object.values(STYLE_PROFILES).map((profile) => (
+                        <DropdownMenuItem 
+                          key={profile.id} 
+                          onClick={() => setSelectedProfileId(profile.id)}
+                          className="flex flex-col items-start gap-0.5 py-2"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-xs">{profile.name}</span>
+                            {selectedProfileId === profile.id && <Check className="w-3 h-3 text-indigo-600" />}
+                          </div>
+                          <span className="text-[9px] text-slate-500 line-clamp-1">{profile.description}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
