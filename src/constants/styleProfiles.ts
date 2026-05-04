@@ -49,6 +49,44 @@ export const STYLE_PROFILES: Record<string, StyleProfile> = {
     },
     citations: 'author-date',
   },
+  mla: {
+    name: 'MLA 9th Edition',
+    id: 'mla',
+    description: 'Modern Language Association style for humanities and literature.',
+    font: 'Times New Roman',
+    fontSize: 24, // 12pt
+    lineSpacing: 480, // Double spaced
+    paragraphIndent: 720, // 0.5 inch
+    headingRules: {
+      1: { size: 24, bold: false, italics: false, uppercase: false, pageBreakBefore: true, alignment: AlignmentType.CENTER },
+      2: { size: 24, bold: false, italics: false, uppercase: false, pageBreakBefore: false, alignment: AlignmentType.LEFT },
+      3: { size: 24, bold: false, italics: true, uppercase: false, pageBreakBefore: false, alignment: AlignmentType.LEFT },
+    },
+    captions: {
+      figure: { placement: 'below', bold: false },
+      table: { placement: 'above', bold: false },
+    },
+    citations: 'author-date',
+  },
+  chicago: {
+    name: 'Chicago (Notes & Bio)',
+    id: 'chicago',
+    description: 'Chicago Manual of Style for history and full citations.',
+    font: 'Times New Roman',
+    fontSize: 24, // 12pt
+    lineSpacing: 240, // Single/Double spaced
+    paragraphIndent: 720, 
+    headingRules: {
+      1: { size: 32, bold: true, italics: false, uppercase: false, pageBreakBefore: true, alignment: AlignmentType.CENTER },
+      2: { size: 28, bold: true, italics: false, uppercase: false, pageBreakBefore: false, alignment: AlignmentType.LEFT },
+      3: { size: 24, bold: true, italics: true, uppercase: false, pageBreakBefore: false, alignment: AlignmentType.LEFT },
+    },
+    captions: {
+      figure: { placement: 'below', bold: false },
+      table: { placement: 'above', bold: false },
+    },
+    citations: 'footnote',
+  },
   ieee: {
     name: 'IEEE Standard',
     id: 'ieee',

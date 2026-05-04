@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { 
-  FileText, Library, Share2, Compass, Settings, GraduationCap
+  FileText, Library, Share2, Compass, Settings, GraduationCap, Book
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ActivityBarProps {
-  activeSidebar: 'outline' | 'library';
+  activeSidebar: 'outline' | 'library' | 'glossary';
   isSidebarVisible: boolean;
   isAssistantOpen: boolean;
   isResearchOpen: boolean;
-  onToggleSidebar: (panel: 'outline' | 'library') => void;
+  onToggleSidebar: (panel: 'outline' | 'library' | 'glossary') => void;
   onToggleAssistant: () => void;
   onToggleResearch: () => void;
   onOpenSettings: () => void;
@@ -51,6 +51,16 @@ export function ActivityBar({
           onClick={() => onToggleSidebar('library')}
         >
           <Library className="w-5 h-5" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`w-11 h-11 rounded-xl transition-all ${
+            activeSidebar === 'glossary' && isSidebarVisible ? 'text-white bg-slate-800 shadow-xl border border-slate-700' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+          }`}
+          onClick={() => onToggleSidebar('glossary')}
+        >
+          <Book className="w-5 h-5" />
         </Button>
       </div>
 

@@ -174,15 +174,14 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
           </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6 hidden lg:block bg-slate-200" />
-
-        {/* Basic Formatting */}
+        {/* Typography & Formatting */}
         <div className="flex items-center bg-slate-50/80 rounded-xl p-1 border border-slate-200/60 shadow-sm gap-0.5">
           <Button
             size="icon"
             variant="ghost"
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('bold') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Bold (Ctrl+B)"
           >
             <Bold className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </Button>
@@ -191,6 +190,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
             variant="ghost"
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('italic') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Italic (Ctrl+I)"
           >
             <Italic className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </Button>
@@ -199,62 +199,90 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
             variant="ghost"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('underline') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Underline (Ctrl+U)"
           >
             <UnderlineIcon className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => editor.chain().focus().toggleSuperscript().run()}
-            className={`w-8 h-8 md:w-9 md:h-9 transition-all hidden sm:flex ${editor.isActive('superscript') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-            title="Superscript (Ctrl+.)"
-          >
-            <SuperscriptIcon className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => editor.chain().focus().toggleSubscript().run()}
-            className={`w-8 h-8 md:w-9 md:h-9 transition-all hidden sm:flex ${editor.isActive('subscript') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-            title="Subscript (Ctrl+,)"
-          >
-            <SubscriptIcon className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-            className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('highlight') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-          >
-            <Highlighter className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-          </Button>
+
+          <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+          <Popover>
+            <PopoverTrigger render={(props) => (
+              <Button
+                {...props}
+                size="icon"
+                variant="ghost"
+                className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all ${
+                  editor.isActive('superscript') || editor.isActive('subscript') || editor.isActive('highlight') 
+                  ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="Advanced Formatting"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            )} />
+            <PopoverContent className="w-48 p-1 shadow-2xl border-slate-200 rounded-xl" align="start">
+              <div className="p-2 border-b border-slate-100 bg-slate-50/80 mb-1 rounded-t-lg">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Extended Formatting</p>
+              </div>
+              <div className="grid grid-cols-1 gap-0.5">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`justify-start h-8 text-[11px] font-bold w-full ${editor.isActive('superscript') ? 'text-indigo-600 bg-indigo-50/50' : ''}`}
+                  onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                >
+                  <SuperscriptIcon className="w-3.5 h-3.5 mr-2" /> Superscript
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`justify-start h-8 text-[11px] font-bold w-full ${editor.isActive('subscript') ? 'text-indigo-600 bg-indigo-50/50' : ''}`}
+                  onClick={() => editor.chain().focus().toggleSubscript().run()}
+                >
+                  <SubscriptIcon className="w-3.5 h-3.5 mr-2" /> Subscript
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`justify-start h-8 text-[11px] font-bold w-full ${editor.isActive('highlight') ? 'text-indigo-600 bg-indigo-50/50' : ''}`}
+                  onClick={() => editor.chain().focus().toggleHighlight().run()}
+                >
+                  <Highlighter className="w-3.5 h-3.5 mr-2" /> Highlight
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <Separator orientation="vertical" className="h-6 hidden lg:block bg-slate-200" />
 
-        {/* Structure & Lists */}
+        {/* Layout & Structure */}
         <div className="flex items-center bg-slate-50/80 rounded-xl p-1 border border-slate-200/60 shadow-sm gap-0.5">
           <Button
             size="icon"
             variant="ghost"
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('heading', { level: 1 }) ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Heading 1"
           >
-            <span className="font-black text-[10px] md:text-xs">H1</span>
+            <span className="font-black text-[10px] md:text-xs tracking-tighter">H1</span>
           </Button>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('heading', { level: 2 }) ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Heading 2"
           >
-            <span className="font-black text-[10px] md:text-xs">H2</span>
+            <span className="font-black text-[10px] md:text-xs tracking-tighter">H2</span>
           </Button>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             className={`w-8 h-8 md:w-9 md:h-9 transition-all ${editor.isActive('bulletList') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+            title="Bullet List"
           >
             <List className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </Button>
@@ -262,7 +290,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
 
         <Separator orientation="vertical" className="h-6 hidden lg:block bg-slate-200" />
 
-        {/* Academic Tools */}
+        {/* References & Links */}
         <div className="flex items-center bg-slate-50/80 rounded-xl p-1 border border-slate-200/60 shadow-sm gap-0.5">
           <Popover>
             <PopoverTrigger render={(props) => (
@@ -271,39 +299,39 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 size="icon"
                 variant="ghost"
                 className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all ${editor.isActive('link') ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                title="Insert Link"
+                title="Hyperlinks & Anchors"
               >
                 <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )} />
-            <PopoverContent className="w-64 p-0 shadow-2xl border-slate-200" align="start">
+            <PopoverContent className="w-72 p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden" align="start">
               <div className="p-3 border-b border-slate-100 bg-slate-50/80">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Document Link</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Internal & External Links</p>
               </div>
               <div className="p-2 space-y-2">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full justify-start h-8 text-[11px] font-medium"
+                  className="w-full justify-start h-8 text-[11px] font-bold border-indigo-100 hover:bg-indigo-50"
                   onClick={setLink}
                 >
-                  <LinkIcon className="w-3 h-3 mr-2" /> External URL...
+                  <LinkIcon className="w-3.5 h-3.5 mr-2 text-indigo-500" /> External URL...
                 </Button>
                 
                 <Separator />
                 
-                <p className="px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 mt-2">Jump to Section</p>
+                <p className="px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 mt-2">Section Navigation</p>
                 <ScrollArea className="h-40">
                   <div className="space-y-0.5 p-1">
                     {getHeadings().length === 0 ? (
-                      <p className="text-[10px] text-slate-400 italic p-2 text-center">No headings found</p>
+                       <p className="text-[10px] text-slate-400 italic p-2 text-center">No headings found</p>
                     ) : (
                       getHeadings().map((h) => (
                         <Button
                           key={h.id}
                           variant="ghost"
                           size="sm"
-                          className="w-full justify-start h-7 text-[10px] font-medium truncate"
+                          className="w-full justify-start h-8 text-[11px] font-medium truncate"
                           onClick={() => insertInternalLink(h.id)}
                         >
                           <span className={`w-1 h-1 rounded-full mr-2 ${h.level === 1 ? 'bg-indigo-400' : 'bg-slate-300'}`} />
@@ -316,153 +344,16 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
               </div>
             </PopoverContent>
           </Popover>
-          
-          <Popover open={isMathPopoverOpen} onOpenChange={setIsMathPopoverOpen}>
-            <PopoverTrigger render={(props) => (
-              <Button
-                {...props}
-                size="icon"
-                variant="ghost"
-                className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-all ${isMathPopoverOpen ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                title="Mathematics & Equations"
-              >
-                <Sigma className="w-4 h-4 md:w-5 md:h-5" />
-              </Button>
-            )} />
-            <PopoverContent className="w-[440px] max-w-[95vw] p-0 shadow-2xl border-slate-200 overflow-hidden rounded-xl" align="start">
-              <div className="bg-slate-50/80 p-3 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Scientific Typesetting</h3>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-1">LaTeX & Symbol Laboratory</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                  <Sigma className="w-4 h-4" />
-                </div>
-              </div>
-              
-              <Tabs defaultValue="gallery" className="w-full">
-                <div className="px-3 pt-3">
-                  <TabsList className="grid w-full grid-cols-2 h-8 bg-slate-100/50 p-1 rounded-lg">
-                    <TabsTrigger value="gallery" className="text-[10px] font-bold uppercase tracking-tight data-[state=active]:bg-white data-[state=active]:text-indigo-600 rounded-md transition-all h-6">Gallery</TabsTrigger>
-                    <TabsTrigger value="latex" className="text-[10px] font-bold uppercase tracking-tight data-[state=active]:bg-white data-[state=active]:text-indigo-600 rounded-md transition-all h-6">LaTeX Editor</TabsTrigger>
-                  </TabsList>
-                </div>
 
-                <TabsContent value="gallery" className="p-3 m-0">
-                  <ScrollArea className="h-64 pr-2">
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {COMMON_EQUATIONS.map((eq) => (
-                        <Button key={eq.name} variant="ghost" className="w-full h-auto py-2.5 px-3 flex flex-col items-start gap-1 justify-center hover:bg-indigo-50/50 border border-transparent hover:border-indigo-100 group transition-all" onClick={() => { editor.chain().focus().setMathematics({ latex: eq.latex }).run(); setIsMathPopoverOpen(false); }}>
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight group-hover:text-indigo-600">{eq.name}</span>
-                            <span className="text-[8px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Insert</span>
-                          </div>
-                          <code className="text-indigo-500 font-mono text-[10px] opacity-60 truncate w-full text-left">{eq.latex}</code>
-                        </Button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
-
-                <TabsContent value="latex" className="p-3 m-0 space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Raw LaTeX Expression</label>
-                    <textarea
-                      placeholder="e.g. \int_{a}^{b} x^2 dx"
-                      value={latexInput}
-                      onChange={(e) => setLatexInput(e.target.value)}
-                      className="w-full min-h-[100px] text-sm p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none font-mono bg-slate-50/50"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          editor.chain().focus().setMathematics({ latex: latexInput }).run();
-                          setLatexInput('');
-                          setIsMathPopoverOpen(false);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-indigo-500 uppercase tracking-widest px-1">Live Preview</label>
-                    <div className="w-full min-h-[80px] p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: latexPreview || '<span class="text-slate-300 italic text-[11px]">Equation preview...</span>' }} />
-                  </div>
-                  <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-100" disabled={!latexInput.trim()} onClick={() => { editor.chain().focus().setMathematics({ latex: latexInput }).run(); setLatexInput(''); setIsMathPopoverOpen(false); }}>
-                    Insert Mathematical Object
-                  </Button>
-                </TabsContent>
-              </Tabs>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger render={(props) => (
-              <Button
-                {...props}
-                size="icon"
-                variant="ghost"
-                className="w-8 h-8 md:w-9 md:h-9 text-slate-500 hover:text-slate-900 rounded-lg transition-all data-[state=open]:bg-white data-[state=open]:text-indigo-600 data-[state=open]:shadow-sm"
-                title="Symbol Browser"
-              >
-                <Calculator className="w-4 h-4 md:w-5 md:h-5" />
-              </Button>
-            )} />
-            <PopoverContent className="w-80 p-0 shadow-2xl border-slate-200 overflow-hidden rounded-xl" align="start">
-              <div className="bg-slate-50/80 p-3 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Symbol Catalog</h3>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-1">Insert Scientific Characters</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                  <Calculator className="w-4 h-4" />
-                </div>
-              </div>
-              
-              <Tabs defaultValue="Greek" className="w-full">
-                <div className="px-3 pt-3">
-                  <TabsList className="grid w-full grid-cols-3 h-8 bg-slate-100/50 p-1 rounded-lg">
-                    {SYMBOL_CATEGORIES.map(cat => (
-                      <TabsTrigger 
-                        key={cat.name} 
-                        value={cat.name} 
-                        className="text-[9px] font-black uppercase tracking-tight data-[state=active]:bg-white data-[state=active]:text-indigo-600 rounded-md transition-all h-6"
-                      >
-                        {cat.name}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
-
-                {SYMBOL_CATEGORIES.map(cat => (
-                  <TabsContent key={cat.name} value={cat.name} className="p-3 m-0">
-                    <ScrollArea className="h-64">
-                      <div className="grid grid-cols-6 gap-1">
-                        {cat.symbols.map((item) => (
-                          <Button
-                            key={item.s}
-                            variant="ghost"
-                            size="sm"
-                            className="h-10 w-full p-0 text-lg hover:bg-white hover:text-indigo-600 border border-transparent hover:border-slate-200 hover:shadow-sm transition-all font-serif"
-                            title={item.l}
-                            onClick={() => {
-                              if (item.l.startsWith('\\')) {
-                                editor.chain().focus().setMathematics({ latex: item.l }).run();
-                              } else {
-                                editor.chain().focus().insertContent(item.s).run();
-                              }
-                            }}
-                          >
-                            {item.s}
-                          </Button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-                ))}
-              </Tabs>
-              <div className="p-2 bg-slate-50 border-t border-slate-100">
-                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center italic">Tip: Click to insert at cursor</p>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={addImage}
+            className="w-8 h-8 md:w-9 md:h-9 text-slate-500 hover:text-slate-900 rounded-lg transition-all"
+            title="Insert Figure/Image"
+          >
+            <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
+          </Button>
 
           <Popover>
             <PopoverTrigger render={(props) => (
@@ -471,25 +362,25 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 variant="ghost"
                 size="icon"
                 className="w-8 h-8 md:w-9 md:h-9 text-slate-500 hover:text-slate-900 rounded-lg transition-all data-[state=open]:bg-white data-[state=open]:text-indigo-600 data-[state=open]:shadow-sm"
-                title="Evidence & Citations"
+                title="Academic Citations"
               >
                 <BookMarked className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )} />
             <PopoverContent className="w-64 p-1 shadow-2xl border-slate-200 rounded-xl" align="start">
               <div className="p-2 border-b border-slate-100 bg-slate-50/80 mb-1 rounded-t-lg">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Research Integration</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Source Integration</p>
               </div>
               <div className="grid grid-cols-1 gap-0.5">
                 <Popover>
                   <PopoverTrigger render={(props) => (
-                    <Button {...props} variant="ghost" size="sm" className="justify-start h-8 text-[11px] font-bold w-full">
-                      <LinkIcon className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Insert Citation
+                    <Button {...props} variant="ghost" size="sm" className="justify-start h-9 text-[11px] font-bold w-full">
+                      <Plus className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Insert Citation
                     </Button>
                   )} />
-                  <PopoverContent className="w-64 p-0 shadow-2xl border-slate-200 ml-1" align="start">
+                  <PopoverContent className="w-72 p-0 shadow-2xl border-slate-200 ml-1" align="start">
                     <div className="p-3 border-b border-slate-100 bg-slate-50/80">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Connect Evidence</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Library Source</p>
                     </div>
                     <ScrollArea className="h-48">
                       <div className="p-1">
@@ -497,7 +388,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                           <div className="p-4 text-center text-xs text-slate-400 italic">No research entries found.</div>
                         ) : (
                           sources.map((s) => (
-                            <button key={s.id} className="w-full text-left p-3 rounded-md hover:bg-indigo-50/50 transition-colors group" onClick={() => insertCitation(s)}>
+                            <button key={s.id} className="w-full text-left p-3 rounded-md hover:bg-indigo-50/50 transition-colors group border-b border-slate-50 last:border-0" onClick={() => insertCitation(s)}>
                               <p className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-700">{s.authors.split(',')[0]} ({s.year})</p>
                               <p className="text-[10px] text-slate-500 line-clamp-1 italic">{s.title}</p>
                             </button>
@@ -510,40 +401,149 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 
                 <Popover open={isFootnotePopoverOpen} onOpenChange={setIsFootnotePopoverOpen}>
                   <PopoverTrigger render={(props) => (
-                    <Button {...props} variant="ghost" size="sm" className="justify-start h-8 text-[11px] font-bold">
+                    <Button {...props} variant="ghost" size="sm" className="justify-start h-9 text-[11px] font-bold">
                       <MessageSquareQuote className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Add Footnote
                     </Button>
                   )} />
-                  <PopoverContent className="w-72 p-3 shadow-2xl border-slate-200">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Footnote Content</p>
+                  <PopoverContent className="w-72 p-3 shadow-2xl border-slate-200 rounded-xl">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Supplement Note</p>
                     <textarea
                       placeholder="Enter supplemental information..."
-                      className="w-full h-24 p-2 text-xs border border-slate-200 rounded-lg mb-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-full h-24 p-3 text-xs border border-slate-200 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-100 outline-none resize-none bg-slate-50"
                       value={footnoteContent}
                       onChange={(e) => setFootnoteContent(e.target.value)}
                     />
                     <Button 
-                      className="w-full h-8 bg-indigo-600 text-xs font-bold uppercase tracking-wider"
+                      className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-[11px] font-black uppercase tracking-wider rounded-lg shadow-sm"
                       onClick={insertFootnote}
                       disabled={!footnoteContent.trim()}
                     >
-                      Insert Note
+                      Insert Footnote
                     </Button>
                   </PopoverContent>
                 </Popover>
               </div>
             </PopoverContent>
           </Popover>
+        </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={addImage}
-            className="w-8 h-8 md:w-9 md:h-9 text-slate-500 hover:text-slate-900 rounded-lg transition-all"
-            title="Media & Components"
-          >
-            <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
-          </Button>
+        <Separator orientation="vertical" className="h-6 hidden lg:block bg-slate-200" />
+
+        {/* Scientific Tools */}
+        <div className="flex items-center bg-slate-50/80 rounded-xl p-1 border border-slate-200/60 shadow-sm gap-0.5">
+          <Popover open={isMathPopoverOpen} onOpenChange={setIsMathPopoverOpen}>
+            <PopoverTrigger render={(props) => (
+              <Button
+                {...props}
+                size="icon"
+                variant="ghost"
+                className="w-8 h-8 md:w-9 md:h-9 text-slate-500 hover:text-slate-900 rounded-lg transition-all data-[state=open]:bg-white data-[state=open]:text-indigo-600 data-[state=open]:shadow-sm"
+                title="Mathematics & Symbols"
+              >
+                <Sigma className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+            )} />
+            <PopoverContent className="w-[480px] max-w-[95vw] p-0 shadow-2xl border-slate-200 overflow-hidden rounded-2xl" align="start">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/80">
+                <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Scientific typesetting</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-1">Insert formulas, symbols and notations</p>
+              </div>
+              
+              <Tabs defaultValue="math" className="w-full">
+                <TabsList className="flex w-full h-10 bg-slate-50/50 p-1 border-b border-slate-100 rounded-none">
+                  <TabsTrigger value="math" className="flex-1 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 h-8">LaTeX Equations</TabsTrigger>
+                  <TabsTrigger value="symbols" className="flex-1 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 h-8">Symbol Browser</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="math" className="m-0">
+                  <div className="grid grid-cols-2 h-[380px]">
+                    <div className="border-r border-slate-100 p-1 flex flex-col">
+                      <ScrollArea className="flex-1">
+                        <div className="p-2 space-y-1">
+                          <p className="px-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Equation Gallery</p>
+                          {COMMON_EQUATIONS.map((eq) => (
+                            <Button 
+                              key={eq.name} 
+                              variant="ghost" 
+                              className="w-full h-auto py-2.5 px-3 flex flex-col items-start gap-1 justify-center hover:bg-indigo-50/50 border border-transparent hover:border-indigo-100 group transition-all text-left" 
+                              onClick={() => { setLatexInput(eq.latex); }}
+                            >
+                              <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight group-hover:text-indigo-600">{eq.name}</span>
+                              <code className="text-indigo-500 font-mono text-[9px] opacity-60 truncate w-full">{eq.latex}</code>
+                            </Button>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                    <div className="p-4 flex flex-col bg-slate-50/30">
+                      <div className="flex-1 space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Expression</label>
+                          <textarea
+                            placeholder="e.g. \int_{a}^{b} x^2 dx"
+                            value={latexInput}
+                            onChange={(e) => setLatexInput(e.target.value)}
+                            className="w-full min-h-[120px] text-[13px] p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 outline-none resize-none font-mono bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Render Preview</label>
+                          <div className="w-full min-h-[100px] p-4 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-auto shadow-inner" dangerouslySetInnerHTML={{ __html: latexPreview || '<span class="text-slate-300 italic text-[11px]">Preview...</span>' }} />
+                        </div>
+                      </div>
+                      <Button 
+                        className="w-full h-10 mt-4 bg-indigo-600 hover:bg-indigo-700 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-100" 
+                        disabled={!latexInput.trim()} 
+                        onClick={() => { editor.chain().focus().setMathematics({ latex: latexInput }).run(); setLatexInput(''); setIsMathPopoverOpen(false); }}
+                      >
+                        Insert Object
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="symbols" className="m-0">
+                  <div className="p-4 h-[380px] flex flex-col">
+                    <Tabs defaultValue="Greek" className="flex-1 flex flex-col min-h-0">
+                      <TabsList className="w-full h-8 bg-slate-100/50 p-1 mb-4">
+                        {SYMBOL_CATEGORIES.map(cat => (
+                          <TabsTrigger key={cat.name} value={cat.name} className="flex-1 text-[9px] font-black uppercase tracking-tight h-6">{cat.name}</TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {SYMBOL_CATEGORIES.map(cat => (
+                        <TabsContent key={cat.name} value={cat.name} className="flex-1 m-0 min-h-0 overflow-hidden">
+                          <ScrollArea className="h-full pr-4">
+                            <div className="grid grid-cols-8 gap-1.5 pb-4">
+                              {cat.symbols.map((item) => (
+                                <Button
+                                  key={item.s}
+                                  variant="outline"
+                                  className="h-10 w-full p-0 text-lg hover:bg-indigo-50 hover:text-indigo-600 border-slate-100 hover:border-indigo-200 transition-all font-serif shadow-none"
+                                  title={item.l}
+                                  onClick={() => {
+                                    if (item.l.startsWith('\\')) {
+                                      editor.chain().focus().setMathematics({ latex: item.l }).run();
+                                    } else {
+                                      editor.chain().focus().insertContent(item.s).run();
+                                    }
+                                  }}
+                                >
+                                  {item.s}
+                                </Button>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                    <div className="pt-3 border-t border-slate-100 text-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest italic">Tip: Tap symbol to insert at caret</p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </PopoverContent>
+          </Popover>
 
           <Popover>
             <PopoverTrigger render={(props) => (
@@ -559,13 +559,13 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
             )} />
             <PopoverContent className="w-64 p-1 shadow-2xl border-slate-200 rounded-xl" align="start">
               <div className="p-2 border-b border-slate-100 bg-slate-50/80 mb-1 rounded-t-lg">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Thesis Frontmatter</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Frontmatter Elements</p>
               </div>
               <div className="grid grid-cols-1 gap-0.5">
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().insertTableOfContents().run()}
                 >
                   <List className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Table of Contents
@@ -573,7 +573,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().insertScientificList({ type: 'figure' }).run()}
                 >
                   <ImageIcon className="w-3.5 h-3.5 mr-2 text-indigo-500" /> List of Figures
@@ -581,7 +581,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().insertScientificList({ type: 'table' }).run()}
                 >
                   <Table className="w-3.5 h-3.5 mr-2 text-indigo-500" /> List of Tables
@@ -589,7 +589,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().insertScientificList({ type: 'equation' }).run()}
                 >
                   <Sigma className="w-3.5 h-3.5 mr-2 text-indigo-500" /> List of Equations
@@ -597,7 +597,7 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().insertScientificList({ type: 'symbol' }).run()}
                 >
                   <Hash className="w-3.5 h-3.5 mr-2 text-indigo-500" /> List of Symbols
@@ -610,15 +610,15 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().setCaption({ type: 'figure' }).run()}
                 >
-                  <Plus className="w-3 h-3 mr-2 text-indigo-400" /> Fig. Caption
+                  <Plus className="w-3 h-3 mr-2 text-indigo-400" /> Figure Caption
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().setCaption({ type: 'table' }).run()}
                 >
                   <Plus className="w-3 h-3 mr-2 text-indigo-400" /> Table Caption
@@ -626,10 +626,10 @@ export function EditorToolbar({ editor, sources, status, onAISuggest, onOpenVers
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="justify-start h-8 text-[11px] font-bold w-full"
+                  className="justify-start h-9 text-[11px] font-bold w-full"
                   onClick={() => editor.chain().focus().setCaption({ type: 'equation' }).run()}
                 >
-                  <Plus className="w-3 h-3 mr-2 text-indigo-400" /> Eq. Identifier
+                  <Plus className="w-3 h-3 mr-2 text-indigo-400" /> Equation Identifier
                 </Button>
               </div>
             </PopoverContent>

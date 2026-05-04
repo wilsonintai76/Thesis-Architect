@@ -4,7 +4,14 @@ interface AIQuickActionsProps {
   onAction: (tool: string) => void;
 }
 
-const TOOLS = ['Rephrase', 'Expand', 'Counterarguments', 'Review tone', 'Fix citations', 'Grammar fix'];
+const TOOLS = [
+  'Analyze gaps',
+  'Research directions', 
+  'Draft section',
+  'Academic review',
+  'Identify inconsistencies',
+  'Source check'
+];
 
 export function AIQuickActions({ onAction }: AIQuickActionsProps) {
   return (

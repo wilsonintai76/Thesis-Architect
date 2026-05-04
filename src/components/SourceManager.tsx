@@ -15,12 +15,22 @@ import { toast } from 'sonner';
 interface SourceManagerProps {
   sources: Source[];
   citationCounts?: Record<string, number>;
+  currentProfileId: string;
+  onProfileChange: (id: string) => void;
   onAddSource: (source: Source) => void;
   onRemoveSource: (id: string) => void;
   onInsertSource: (source: Source) => void;
 }
 
-export function SourceManager({ sources, citationCounts = {}, onAddSource, onRemoveSource, onInsertSource }: SourceManagerProps) {
+export function SourceManager({ 
+  sources, 
+  citationCounts = {}, 
+  currentProfileId,
+  onProfileChange,
+  onAddSource, 
+  onRemoveSource, 
+  onInsertSource 
+}: SourceManagerProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isOpen, setIsOpen] = React.useState(false);
   const [isImportOpen, setIsImportOpen] = React.useState(false);
@@ -37,6 +47,12 @@ export function SourceManager({ sources, citationCounts = {}, onAddSource, onRem
     s.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.year.includes(searchQuery)
   );
+
+  const STYLES = [
+    { id: 'apa', label: 'APA 7' },
+    { id: 'mla', label: 'MLA' },
+    { id: 'chicago', label: 'Chicago' },
+  ];
 
   const handleAdd = () => {
     if (!newSource.title || !newSource.authors || !newSource.year) {
@@ -279,9 +295,19 @@ TI  - Exploring AI..."
             />
           </div>
           <div className="flex gap-2 mb-6">
-            <div className="bg-indigo-600 text-[9px] font-black px-2.5 py-1 rounded text-white uppercase tracking-widest shadow-sm">APA 7</div>
-            <div className="text-[9px] font-black px-2.5 py-1 text-slate-400 uppercase tracking-widest hover:text-slate-600 cursor-pointer transition-colors">MLA</div>
-            <div className="text-[9px] font-black px-2.5 py-1 text-slate-400 uppercase tracking-widest hover:text-slate-600 cursor-pointer transition-colors">Chicago</div>
+            {STYLES.map((style) => (
+              <button
+                key={style.id}
+                onClick={() => onProfileChange(style.id)}
+                className={`text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest transition-all ${
+                  currentProfileId === style.id 
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' 
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {style.label}
+              </button>
+            ))}
           </div>
           {filteredSources.length === 0 ? (
             <div className="text-center py-16 text-slate-300">

@@ -2,9 +2,10 @@ import * as React from 'react';
 import { 
   Library, GraduationCap, Maximize, Minimize,
 } from 'lucide-react';
-import { Source, Paper, DocumentVersion, ResearchArtifact } from './types';
+import { Source, Paper, DocumentVersion, ResearchArtifact, GlossaryEntry } from './types';
 import { SourceManager } from './components/SourceManager';
 import { Outline } from './components/Outline';
+import { GlossaryManager } from './components/GlossaryManager';
 import { Editor } from './components/Editor';
 import { AIAssistant } from './components/AIAssistant';
 import { VersionHistory } from './components/VersionHistory';
@@ -34,7 +35,7 @@ export default function App() {
   const [isAssistantOpen, setIsAssistantOpen] = React.useState(false);
   const [isResearchOpen, setIsResearchOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('editor');
-  const [activeSidebar, setActiveSidebar] = React.useState<'outline' | 'library'>('library');
+  const [activeSidebar, setActiveSidebar] = React.useState<'outline' | 'library' | 'glossary'>('library');
   const [isSidebarVisible, setIsSidebarVisible] = React.useState(true);
   const [isFocusMode, setIsFocusMode] = React.useState(false);
   const [versions, setVersions] = React.useState<DocumentVersion[]>([]);
@@ -46,6 +47,7 @@ export default function App() {
   const [selectedText, setSelectedText] = React.useState('');
   const [textToInsert, setTextToInsert] = React.useState<string | null>(null);
   const [researchArtifacts, setResearchArtifacts] = React.useState<ResearchArtifact[]>([]);
+  const [glossary, setGlossary] = React.useState<GlossaryEntry[]>([]);
 
   // Load active document data
   React.useEffect(() => {
@@ -57,6 +59,7 @@ export default function App() {
         setSources(prev => JSON.stringify(prev) === JSON.stringify(activeDoc.sources || []) ? prev : (activeDoc.sources || []));
         setVersions(prev => JSON.stringify(prev) === JSON.stringify(activeDoc.versions || []) ? prev : (activeDoc.versions || []));
         setResearchArtifacts(prev => JSON.stringify(prev) === JSON.stringify(activeDoc.researchArtifacts || []) ? prev : (activeDoc.researchArtifacts || []));
+        setGlossary(prev => JSON.stringify(prev) === JSON.stringify(activeDoc.glossary || []) ? prev : (activeDoc.glossary || []));
       }
     } else if (user && documents.length === 0 && !activeDocId) {
        // Create initial doc if none exist
@@ -134,12 +137,41 @@ export default function App() {
     setIsHistoryOpen(false);
   }, []);
 
+  const handleToggleSidebar = React.useCallback((panel: 'outline' | 'library' | 'glossary') => {
+    if (activeSidebar === panel && isSidebarVisible) {
+      setIsSidebarVisible(false);
+    } else {
+      setActiveSidebar(panel);
+      setIsSidebarVisible(true);
+    }
+  }, [activeSidebar, isSidebarVisible]);
+
   const handleUpdateArtifacts = React.useCallback((newArtifacts: ResearchArtifact[]) => {
     setResearchArtifacts(newArtifacts);
     if (activeDocId) {
-      saveDocument(activeDocId, { content, sources, versions, researchArtifacts: newArtifacts });
+      saveDocument(activeDocId, { content, sources, versions, researchArtifacts: newArtifacts, glossary });
     }
-  }, [activeDocId, content, sources, versions, saveDocument]);
+  }, [activeDocId, content, sources, versions, glossary, saveDocument]);
+
+  const handleAddGlossaryEntry = React.useCallback((entry: GlossaryEntry) => {
+    const next = [...glossary, entry];
+    setGlossary(next);
+    if (activeDocId) saveDocument(activeDocId, { content, sources, versions, researchArtifacts, glossary: next });
+    toast.success(`Term "${entry.term}" defined`);
+  }, [activeDocId, content, sources, versions, researchArtifacts, glossary, saveDocument]);
+
+  const handleRemoveGlossaryEntry = React.useCallback((id: string) => {
+    const next = glossary.filter(e => e.id !== id);
+    setGlossary(next);
+    if (activeDocId) saveDocument(activeDocId, { content, sources, versions, researchArtifacts, glossary: next });
+  }, [activeDocId, content, sources, versions, researchArtifacts, glossary, saveDocument]);
+
+  const handleUpdateGlossaryEntry = React.useCallback((entry: GlossaryEntry) => {
+    const next = glossary.map(e => e.id === entry.id ? entry : e);
+    setGlossary(next);
+    if (activeDocId) saveDocument(activeDocId, { content, sources, versions, researchArtifacts, glossary: next });
+    toast.success(`Updated definition for "${entry.term}"`);
+  }, [activeDocId, content, sources, versions, researchArtifacts, glossary, saveDocument]);
 
   const handleInsertText = React.useCallback((text: string) => {
     setTextToInsert(text);
@@ -157,10 +189,10 @@ export default function App() {
     if (activeDocId) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        saveDocument(activeDocId, { content: newContent, sources, versions, researchArtifacts });
+        saveDocument(activeDocId, { content: newContent, sources, versions, researchArtifacts, glossary });
       }, 2000); // 2 second debounce
     }
-  }, [activeDocId, sources, versions, researchArtifacts, saveDocument]);
+  }, [activeDocId, sources, versions, researchArtifacts, glossary, saveDocument]);
 
   const handleFinalize = React.useCallback((format: 'pdf' | 'docx') => {
     if (format === 'pdf') {
@@ -235,13 +267,19 @@ export default function App() {
     toast.info('Source removed');
   };
 
-  const toggleSidebar = (panel: 'outline' | 'library') => {
-    if (activeSidebar === panel && isSidebarVisible) {
-      setIsSidebarVisible(false);
-    } else {
-      setActiveSidebar(panel);
-      setIsSidebarVisible(true);
-    }
+  const getHeadings = () => {
+    if (!content) return [];
+    const headings: { id: string; text: string }[] = [];
+    const traverse = (node: any) => {
+      if (node.type === 'heading' && node.attrs?.id) {
+        headings.push({ id: node.attrs.id, text: node.textContent || node.content?.[0]?.text || 'Untitled' });
+      }
+      if (node.content && Array.isArray(node.content)) {
+        node.content.forEach(traverse);
+      }
+    };
+    traverse(content);
+    return headings;
   };
 
   return (
@@ -254,7 +292,7 @@ export default function App() {
             isSidebarVisible={isSidebarVisible}
             isAssistantOpen={isAssistantOpen}
             isResearchOpen={isResearchOpen}
-            onToggleSidebar={toggleSidebar}
+            onToggleSidebar={handleToggleSidebar}
             onToggleAssistant={handleToggleAssistant}
             onToggleResearch={handleToggleResearch}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -263,19 +301,30 @@ export default function App() {
 
         {/* Sidebar Panel */}
         {!isFocusMode && isSidebarVisible && (
-          <div className="h-full animate-in slide-in-from-left duration-300 shadow-2xl z-40 bg-white">
+          <div className="h-full animate-in slide-in-from-left duration-300 shadow-2xl z-40 bg-white min-w-80 border-r border-slate-200">
             {activeSidebar === 'library' ? (
               <SourceManager 
                 sources={sources} 
                 citationCounts={citationCounts}
+                currentProfileId={selectedProfileId}
+                onProfileChange={setSelectedProfileId}
                 onAddSource={handleAddSource} 
                 onRemoveSource={handleRemoveSource} 
                 onInsertSource={handleInsertSource}
               />
-            ) : (
+            ) : activeSidebar === 'outline' ? (
               <Outline 
                 content={content} 
                 onNavigate={handleNavigate} 
+              />
+            ) : (
+              <GlossaryManager
+                entries={glossary}
+                onAddEntry={handleAddGlossaryEntry}
+                onRemoveEntry={handleRemoveGlossaryEntry}
+                onUpdateEntry={handleUpdateGlossaryEntry}
+                onNavigateToSection={handleNavigate}
+                headings={getHeadings()}
               />
             )}
           </div>
@@ -289,7 +338,7 @@ export default function App() {
             activeTab={activeTab}
             selectedProfileId={selectedProfileId}
             user={user}
-            onToggleSidebar={() => toggleSidebar('outline')}
+            onToggleSidebar={() => handleToggleSidebar('outline')}
             onSetActiveTab={setActiveTab}
             onToggleFocusMode={() => setIsFocusMode(!isFocusMode)}
             onSetSelectedProfileId={setSelectedProfileId}
